@@ -272,7 +272,7 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
                 continue
             end
 
-            for i in reverse(1:length(remaining)) # LIFO stack, reversing keeps order
+            for i in reverse(eachindex(remaining)) # LIFO stack, reversing keeps order
                 v = remaining[i]
                 remaining′ = (remaining[1:(i-1)]..., remaining[(i+1):end]...)
                 val = ((current..., v),
