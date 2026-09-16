@@ -139,13 +139,20 @@ function sterm(S, op, args)
     if isa(op, Symbol)
         for M ∈ (@__MODULE__, Main, Base)
             if isdefined(M, op)
-                op = M.eval(op)
+                op = getfield(M, op)
                 break
             end
         end
-        isa(op, Symbol) && (op = eval(op))
+        isa(op, Symbol) && (op = Core.eval(Main, op))
     elseif isa(op, Expr)
-        op = eval(op)
+        for M ∈ (@__MODULE__, Main, Base)
+            try
+                op = Core.eval(M, op)
+                break
+            catch err
+                # fall through if the expression is not yet resolvable in this module
+            end
+        end
     end
 
     maketerm(S, op, args, nothing)
@@ -274,10 +281,39 @@ end
 function pass_any_guard(var, data)
     !has_predicate(var) && return true
 
-    # to evaluate a guard. (Where is the question?)
     pred = get_predicate(var)
+    pred_fn = pred
+
+    if pred isa Symbol
+        for M ∈ (@__MODULE__, Main, Base)
+            if isdefined(M, pred)
+                pred_fn = getfield(M, pred)
+                break
+            end
+        end
+    elseif pred isa Expr
+        for M ∈ (@__MODULE__, Main, Base)
+            try
+                pred_fn = Core.eval(M, pred)
+                break
+            catch err
+                # fall through if this expression is not yet resolvable in the current scope
+            end
+        end
+    end
+
+    # Avoid re-evaluating user predicates repeatedly when they are already callables.
+    if pred_fn isa Function
+        return try
+            Base.invokelatest(pred_fn, _unwrap_const(data))
+        catch err
+            false
+        end
+    end
+
+    # Fallback for unusual dynamic forms.
     try
-        Base.invokelatest(eval(pred), _unwrap_const(data))
+        return Base.invokelatest(eval(pred), _unwrap_const(data))
     catch err
         try
             return invokelatest(Main.eval(pred), _unwrap_const(data))
