@@ -231,7 +231,7 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
     # permutations)
     λ = (ss′, ps′, σ, ss) -> begin
         result = Any[]
-        stack = Any[([], ss′, [σ])]
+        stack = Any[(((), tuple(ss′...), (σ,)))]
         while !isempty(stack)
             current, remaining, θ = pop!(stack)
             j = length(current)
@@ -272,10 +272,10 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
                 continue
             end
 
-            for i in reverse(eachindex(remaining)) # LIFO stack, reversing keeps order
+            for i in reverse(1:length(remaining)) # LIFO stack, reversing keeps order
                 v = remaining[i]
-                remaining′ = deleteat!(copy(remaining), i)
-                val = (vcat(current, v),
+                remaining′ = (remaining[1:(i-1)]..., remaining[(i+1):end]...)
+                val = ((current..., v),
                        remaining′,
                        θ)
                 push!(stack, val)
