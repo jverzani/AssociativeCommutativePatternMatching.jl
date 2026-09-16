@@ -426,7 +426,7 @@ function _match_sequence_variables(ss, ps, fₐ=nothing, σ = match_dict())
         row = zeros(Int, n)
         out = Vector{Vector{Int}}()
         function rec(j, remaining)
-            if j > n
+            if j < 1
                 remaining == 0 && push!(out, copy(row))
                 return
             end
@@ -434,10 +434,10 @@ function _match_sequence_variables(ss, ps, fₐ=nothing, σ = match_dict())
             maxv = fld(remaining, k)
             for a in 0:maxv
                 row[j] = a
-                rec(j + 1, remaining - a * k)
+                rec(j - 1, remaining - a * k)
             end
         end
-        rec(1, total)
+        rec(n, total)
         out
     end
 
