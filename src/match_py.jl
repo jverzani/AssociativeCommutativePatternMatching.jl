@@ -416,14 +416,35 @@ function _match_sequence_variables(ss, ps, fₐ=nothing, σ = match_dict())
 
     # rename
     ssᵥ = [v for (k,v) in ds] # last.(ds)
-    i = ntuple(zero, Val(n))
 
-    # XXX brute force
-    ii = Iterators.filter(Iterators.product(
-        (Iterators.product((0:s for _ in 1:n)...) for s in ssᵥ)...)) do u
-            all(sum(ui .* ks) == si for (ui,si) in zip(u, ssᵥ)) &&
-                all(sum(ui[i] for ui in u) > 0 for i in 1:n1)
+    # Enumerate valid assignments of subject counts to sequence variables without
+    # constructing the huge cartesian product of all 0:s choices per variable.
+    # For a given subject count `total`, and per-variable weight `ks[j]`, choose
+    # counts `a_j` with sum(a_j * ks[j]) == total.
+    function _distribute_total(total, ks)
+        n = length(ks)
+        row = zeros(Int, n)
+        out = Vector{Vector{Int}}()
+        function rec(j, remaining)
+            if j > n
+                remaining == 0 && push!(out, copy(row))
+                return
+            end
+            k = ks[j]
+            maxv = fld(remaining, k)
+            for a in 0:maxv
+                row[j] = a
+                rec(j + 1, remaining - a * k)
+            end
         end
+        rec(1, total)
+        out
+    end
+
+    ii = Iterators.filter(Iterators.product((_distribute_total(s, ks) for s in ssᵥ)...)) do u
+        all(sum(ui .* ks) == si for (ui, si) in zip(u, ssᵥ)) &&
+            all(sum(ui[i] for ui in u) > 0 for i in 1:n1)
+    end
 
     iii = Iterators.map(Iterators.reverse(ii)) do u
         σ′ = σ
