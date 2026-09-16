@@ -168,28 +168,16 @@ end
 function _match_constant_patterns(ss, ps)
     #@show :mcp, ss, ps
     Pconst = filter(!has_𝑋, ps)
-    isempty(Pconst) && return (ss, ps)
-
-    remaining = Dict{Any, Int}()
-    for p ∈ Pconst
-        key = isa(p, Symbol) ? Symbol(p) : p
-        remaining[key] = get(remaining, key, 0) + 1
-    end
-
-    ss′ = Any[]
-    for s in ss
-        key = isa(s, Symbol) ? Symbol(s) : s
-        if haskey(remaining, key) && remaining[key] > 0
-            remaining[key] -= 1
-            continue
+    ss′ = ss
+    for p ∈ Pconst      # check Pconst ⊂ ss, else return nothing
+        if isa(p, Symbol)
+            p in Symbol.(ss′) || return nothing
+            ss′ = filter(s -> !=(Symbol(s), p), ss′)
+        else
+            p in ss′ || return nothing
+            ss′ = filter(!=(p), ss′)
         end
-        push!(ss′, s)
     end
-
-    if any(>=(1), values(remaining))
-        return nothing
-    end
-
     ps′ = filter(p -> p ∉ Pconst, ps)
     return (ss′, ps′)
 end
