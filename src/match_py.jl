@@ -199,7 +199,7 @@ function _match_matched_variables(ss, ps, σ)
             for sᵢ ∈ itr
                 j = findfirst(==(sᵢ), ss)
                 isnothing(j) && return nothing
-                ss = vcat(ss[1:(j-1)], ss[(j+1):end])
+                ss = [ss[i] for i in eachindex(ss) if i != j] #vcat(ss[1:(j-1)], ss[(j+1):end])
             end
         end
     end
