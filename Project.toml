@@ -1,6 +1,6 @@
 name = "AssociativeCommutativePatternMatching"
 uuid = "1750cefb-754d-4383-8ab7-d9c1d1688458"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["jverzani <jverzani@gmail.com> and contributors"]
 
 [deps]
