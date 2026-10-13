@@ -137,3 +137,115 @@ end
 
 
 end
+
+@testset "correctness: matching edge cases" begin
+    ms(pat, sub) = collect(_eachmatch(pat, sub))
+
+    # constant patterns remove only one copy from the subject
+    θ = ms(:(a + ~x), :(a + a + b))
+    @test length(θ) == 1 && only(θ)[:x] == :(a + b)
+    θ = ms(:(2 * ~x), :(2 * 2 * y))
+    @test length(θ) == 1 && only(θ)[:x] == :(2 * y)
+    @test isempty(ms(:(a + a + ~x), :(a + b + c)))
+
+    # non-variable patterns keep repeated leftover terms, without duplicate matches
+    θ = ms(:(g(~y) + ~~z), :(g(c) + a + a))
+    @test length(θ) == 1 && only(θ)[:y] == :c && only(θ)[:z] == [:a, :a]
+    θ = ms(:(g(~y) + ~~z), :(g(a) + g(a) + b))
+    @test length(θ) == 1 && only(θ)[:y] == :a && only(θ)[:z] == [:b, :(g(a))]
+
+    # star variables may match nothing in a commutative function
+    θ = ms(:(fₘ(a, ~~z)), :(fₘ(a)))
+    @test length(θ) == 1 && only(θ)[:z] == []
+    θ = ms(:(fₘ(~x, ~~z)), :(fₘ(a)))
+    @test length(θ) == 1 && only(θ)[:x] == :a && only(θ)[:z] == []
+    @test isempty(ms(:(fₘ(a, ~~~z)), :(fₘ(a))))  # plus variables still need a term
+
+    # guards on regular variables in commutative, non-associative functions
+    @test isempty(ms(:(fₘ(~x::isodd, ~y)), :(fₘ(2, 4))))
+    θ = ms(:(fₘ(~x::isodd, ~y)), :(fₘ(2, 3)))
+    @test length(θ) == 1 && only(θ)[:x] == 3 && only(θ)[:y] == 2
+
+    # a variable bound to a sum is found within a flattened associative subject
+    θ = ms(:(f(~x, ~x + ~y)), :(f(a + b, a + b + c)))
+    @test length(θ) == 1 && only(θ)[:x] == :(a + b) && only(θ)[:y] == :c
+    @test isempty(ms(:(f(~x, ~x + ~y)), :(f(a + b, a + c))))
+
+    # same variable with and without a guard is a non-match, not an error
+    @test isempty(ms(:(fₘ(~x::isodd, ~x)), :(fₘ(3, 5))))
+    θ = ms(:(fₘ(~x::isodd, ~x)), :(fₘ(3, 3)))
+    @test length(θ) == 1 && only(θ)[:x] == 3
+
+    # default exponent on a literal base
+    σ = _match(:(x^(~!n)), :x)
+    @test !isnothing(σ) && σ[:n] == 1
+
+    # normalizing 1/u^v against a negative power
+    σ = _match(:(1/(~x)^2), :(a^(-2)))
+    @test !isnothing(σ) && σ[:x] == :a
+    @test isempty(ms(:(1/(~x)^(~n)), :(a^(-2)))) # symbolic exponent: no match, no error
+
+    # ℯ^x pattern matches exp(x)
+    σ = _match(:(ℯ^(~x)), :(exp(y)))
+    @test !isnothing(σ) && σ[:x] == :y
+
+    # inverting a rational
+    @test AssociativeCommutativePatternMatching._invert_expr(:(1//2)) == :(2//1)
+    @test AssociativeCommutativePatternMatching._invert_expr(2) == :(2^-1)
+    σ = _match(:((~x)/2), :(y * 2^-1))  # pattern normalized to (~x) * 2^-1
+    @test !isnothing(σ) && σ[:x] == :y
+end
+
+@testset "default slots: fewest defaults" begin
+    ms(pat, sub) = collect(_eachmatch(pat, sub))
+    @test collect(AssociativeCommutativePatternMatching.powerset(1:3)) ==
+        sort(collect(AssociativeCommutativePatternMatching.powerset(1:3)), by=length) # assumed ordering
+
+    # all matches using the fewest defaults, independent of argument order
+    θ = ms(:(~!a + ~!b), :y)
+    @test Set((σ[:a], σ[:b]) for σ ∈ θ) == Set([(0, :y), (:y, 0)])
+    θ = ms(:(~!b + ~!a), :y)
+    @test Set((σ[:a], σ[:b]) for σ ∈ θ) == Set([(0, :y), (:y, 0)])
+
+    # fewer defaults preferred
+    θ = ms(:((~!a) * (~x)^(~!n)), :(y^2))
+    @test length(θ) == 1 && only(θ)[:a] == 1 && only(θ)[:x] == :y && only(θ)[:n] == 2
+    θ = ms(:((~!a) * (~x)^(~!n)), :y)
+    @test length(θ) == 1 && only(θ)[:a] == 1 && only(θ)[:x] == :y && only(θ)[:n] == 1
+
+    # default exponent is not used when the base would match a power
+    @test isempty(ms(:(f(~n, (~x)^(~!n))), :(f(1, y^3))))
+    σ = _match(:(f(~n, (~x)^(~!n))), :(f(1, y)))
+    @test !isnothing(σ) && σ[:x] == :y && σ[:n] == 1
+end
+
+@testset "default slots: guards" begin
+    ms(pat, sub) = collect(_eachmatch(pat, sub))
+
+    # guard kept when a default slot matches a term
+    @test isempty(ms(:(~!a::isodd + ~!b::isodd), 2))
+    θ = ms(:(~!a::isodd + ~!b::isodd), 3)
+    @test Set((σ[:a], σ[:b]) for σ ∈ θ) == Set([(0, 3), (3, 0)])
+
+    @test isempty(ms(:((~x)^(~!n::iseven)), :(y^3)))
+    σ = _match(:((~x)^(~!n::iseven)), :(y^2))
+    @test !isnothing(σ) && σ[:x] == :y && σ[:n] == 2
+end
+
+@testset "commutative arguments in standard order" begin
+    ms(pat, sub) = collect(_eachmatch(pat, sub))
+
+    # constant subterms equal up to commutativity
+    θ = ms(:(sin(a + b) + ~x), :(sin(b + a) + c))
+    @test length(θ) == 1 && only(θ)[:x] == :c
+    @test isempty(ms(:(sin(a - b) + ~x), :(sin(b - a) + c)))   # - is not commutative
+    σ = _match(:(f(~x, g(b * a))), :(f(1, g(a * b))))
+    @test !isnothing(σ) && σ[:x] == 1
+    @test !isnothing(_match(:(sin(a + b)), :(sin(b + a))))     # no wildcards
+    @test isnothing(_match(:(sin(a - b)), :(sin(b - a))))
+
+    # repeated variables compare equal up to commutativity
+    σ = _match(:(f(~x, ~x)), :(f(a + b, b + a)))
+    @test !isnothing(σ) && σ[:x] == :(a + b)
+    @test isnothing(_match(:(f(~x, ~x)), :(f(a - b, b - a))))
+end

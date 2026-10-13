@@ -9,4 +9,7 @@ TODO.md
 default.profraw
 */.idea/*
 .idea/*
+.idea/workspace.xml
 AssociativeCommutativePatternMatching.iml
+.mcp.json
+.claude/settings.local.json
