@@ -162,11 +162,10 @@ end
 # invert an expr to regularize a/b --> a*b^{-1}
 function _invert_expr(pat)
     if isa(pat, Integer)
-        return pterm(:^, (pat, -1.0))
+        return pterm(:^, (pat, -1))
     elseif is_operation(:(//))(pat)
         u,v = arguments(pat)
-        u′ = isa(u, Number) ? -u : pterm(:*, (u,-1))
-        return pterm(:(//), (u′, v))
+        return pterm(:(//), (v, u))
     else
         return pterm(:^, (pat, -1))
     end
@@ -176,6 +175,22 @@ end
 <ₑ(x::Symbol, y::Symbol) = x < y
 <ₑ(x::Any, y::Any) = <ₑ(Symbol(x), Symbol(y))
 
+
+# put arguments of commutative operations in a standard order (<ₑ),
+# so terms equal up to commutativity, e.g. sin(a+b) and sin(b+a), compare equal.
+# Subjects are fully ordered; for patterns only calls without wildcards are
+# reordered and wildcards (with any guard) are left alone.
+_canonical(x; pattern=false) = x
+function _canonical(ex::Expr; pattern=false)
+    pattern && is_𝑋(ex) && return ex
+    iscall(ex) || return ex
+    op = operation(ex)
+    args = [_canonical(a; pattern) for a ∈ arguments(ex)]
+    if iscommutative(op) && !(pattern && has_𝑋(ex))
+        sort!(args, lt = <ₑ)
+    end
+    return Expr(:call, op, args...)
+end
 
 # ----- predicates
 _is_rational(x) = isa(_unwrap_const(x), Rational)

@@ -3,6 +3,7 @@
 
 # return iterator of each possible match
 function _eachmatch(pat::Union{Symbol,Expr}, ex)
+    pat, ex = _canonical(pat; pattern=true), _canonical(ex)
     if has_𝑋(pat)
         return match_one_to_one([ex], pat)
     else

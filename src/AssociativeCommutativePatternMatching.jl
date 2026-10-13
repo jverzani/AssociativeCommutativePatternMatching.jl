@@ -27,6 +27,8 @@ The pattern `f(a, ~x, c)` would match `f(a,b,c)` (with `:x => b`) but not match 
 
 For `AssociativeCommutativePatternMatching`  and associative functions, matches have the function applied to slot variables. So `+(a,~x,c)` matched against `:(+(a, b₁, b₂, c))` would have `:x => :(b₁ + b₂)`.
 
+Before matching, the arguments of commutative functions in the subject (and in parts of the pattern without wildcards) are put in a standard order. So `sin(a + b) + ~x` matches `sin(b + a) + c`, but `sin(a - b) + ~x` does not match `sin(b - a) + c`. As a consequence, matched values have commutative arguments in this standard order, e.g. `(~x)^(~x)` matched against `:((x + p)^(x + p))` has `:x => :(p + x)`.
+
 The primary function is the unexported `_eachmatch(pat, sub`) function which returns an iterator of matches. The `_match(pat, sub)` function returns the first value. There are also `_rewrite` and `_replace` functions.
 ## Example
 
@@ -58,7 +60,7 @@ The reduced number of allocations in the first call, is due to the values being 
 module AssociativeCommutativePatternMatching
 
 using TermInterface
-import Combinatorics: permutations, combinations, multiexponents, powerset
+import Combinatorics: permutations, multiset_combinations, multiexponents, powerset
 
 include("utils.jl")
 include("syntactic_match.jl")

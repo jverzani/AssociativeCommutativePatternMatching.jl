@@ -233,7 +233,7 @@ end
     pat = :((~x)^(~x))
     sub = :((x+p)^(x+p))
     σ = _match(pat, sub)
-    @test σ[:x] == :(x + p)
+    @test σ[:x] == :(p + x) # commutative arguments in standard order
 
     # _match 2 wildcards
     pat = :((~x)*sin((~y)))

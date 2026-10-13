@@ -122,6 +122,7 @@ function match_sequence(ss, ps, fₐ=nothing, θ=(match_dict(),))
             i = i + lsub
         end
         θ′ == ∅ && return nothing
+        i == n + 1 || return nothing # all of ss must be consumed
         return θ′
     end
 
@@ -169,22 +170,23 @@ function _match_constant_patterns(ss, ps)
     #@show :mcp, ss, ps
     Pconst = filter(!has_𝑋, ps)
     ss′ = ss
-    for p ∈ Pconst      # check Pconst ⊂ ss, else return nothing
-        if isa(p, Symbol)
-            p in Symbol.(ss′) || return nothing
-            ss′ = filter(s -> !=(Symbol(s), p), ss′)
-        else
-            p in ss′ || return nothing
-            ss′ = filter(!=(p), ss′)
-        end
+    for p ∈ Pconst      # check Pconst ⊂ ss (as multisets), else return nothing
+        j = findfirst(s -> _eq_constant(s, p), ss′)
+        isnothing(j) && return nothing
+        ss′ = _deleteat(ss′, j) # remove only one copy
     end
     ps′ = filter(p -> p ∉ Pconst, ps)
     return (ss′, ps′)
 end
 
+# does subject term s equal constant pattern p?
+# a symbol in a pattern may be a symbolic variable (non Symbol) in the subject
+_eq_constant(s, p::Symbol) = Symbol(s) == p
+_eq_constant(s, p) = isequal(s, p)
+
 # trims down ss, ps
 # return trimmed ss, ps or nothing
-function _match_matched_variables(ss, ps, σ)
+function _match_matched_variables(ss, ps, σ, fₐ=nothing)
     #@show :mmv, ss, ps, σ
 
     # subtract from, ps, ss previously matched variables
@@ -195,11 +197,20 @@ function _match_matched_variables(ss, ps, σ)
         ind = findall(==(p), ps′′)
         for i ∈ ind
             v = ps′[i]
-            itr = (is_slot(v) || is_defslot(v)) ? (s,) : s
+            itr = s
+            if is_slot(v) || is_defslot(v)
+                # in an associative context the subject is flattened, so
+                # a value fₐ(a,b) bound elsewhere appears as a, b
+                itr = (s,)
+                if isassociative(fₐ) && iscall(s) && Symbol(operation(s)) == Symbol(fₐ) &&
+                    isnothing(findfirst(==(s), ss))
+                    itr = arguments(s)
+                end
+            end
             for sᵢ ∈ itr
                 j = findfirst(==(sᵢ), ss)
                 isnothing(j) && return nothing
-                ss = [ss[i] for i in eachindex(ss) if i != j] #vcat(ss[1:(j-1)], ss[(j+1):end])
+                ss = _deleteat(ss, j)
             end
         end
     end
@@ -214,7 +225,7 @@ end
 function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
     #@show :mnvp, ss, ps, fₐ, σ
 
-    out = _match_matched_variables(ss, ps, σ)
+    out = _match_matched_variables(ss, ps, σ, fₐ)
     isnothing(out) && return nothing
     ss, ps = out
     ps′, ps′′ = _groupby(!is_𝑋, ps)
@@ -229,7 +240,8 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
     # matches are possible.
     # (basic algorithm, with errors fixed, from claude on depth-first stack approach to compute
     # permutations)
-    λ = (ss′, ps′, σ, ss) -> begin
+    λ = (inds, ps′, σ, ss) -> begin
+        ss′ = ss[inds]
         result = Any[]
         stack = Any[(((), tuple(ss′...), (σ,)))]
         while !isempty(stack)
@@ -265,7 +277,7 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
             end
 
             if isempty(remaining) # terminate successfully if nothing left in remaining
-                ss′′ = setdiff(ss, ss′)
+                ss′′ = ss[setdiff(eachindex(ss), inds)] # by position, keeps repeats
                 for σ ∈ θ
                     push!(result, (ss′′, ps′′, σ))
                 end
@@ -274,6 +286,8 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
 
             for i in reverse(eachindex(remaining)) # LIFO stack, reversing keeps order
                 v = remaining[i]
+                # equal values give the same permutations; use first only
+                any(isequal(v), remaining[1:(i-1)]) && continue
                 remaining′ = (remaining[1:(i-1)]..., remaining[(i+1):end]...)
                 val = ((current..., v),
                        remaining′,
@@ -285,8 +299,12 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
         return result
     end
 
-    i = combinations(ss, n)
-    ii = Iterators.map(ss′ -> λ(ss′, ps′, σ, ss), i)
+    # combinations of positions, lazily. Combinations with the same values give
+    # the same matches, so only distinct ones are used: equal values share
+    # an id, distinct combinations of ids are mapped back to positions.
+    ids = [findfirst(isequal(s), ss) for s ∈ ss]
+    i = Iterators.map(c -> _ids_to_positions(c, ids), multiset_combinations(ids, n))
+    ii = Iterators.map(inds -> λ(inds, ps′, σ, ss), i)
     iii = Iterators.flatten(ii)
     return iii
 end
@@ -317,7 +335,7 @@ function check_nonmatching_defslot(s, p, θ′)
                 if is_defslot(b)
                     val = defslot_op_map[opₚ]
                     σ′ = match_dict(varname(b) => val)
-                    θ′ = (merge_match(σ, σ′) for σ ∈ θ′)
+                    θ′ = (merge_match(σ, σ′) for σ ∈ θ′ if iscompatible(σ, σ′))
                     p′ = a
                     return p′, θ′
                 end
@@ -332,15 +350,14 @@ end
 # return iterator of (ss, ps, σ)
 function _match_regular_variables(ss, ps, fₐ=nothing, σ = match_dict())
     #@show :mrv, ss, ps, fₐ, σ
-    isempty(ps) && !isempty(ss) && return ∅
-    isempty(ss) && !isempty(ps) && return ∅
+    isempty(ps) && return isempty(ss) ? ((ss, ps, σ),) : ∅
 
-    isempty(ps) && return ((ss, ps, σ),)
-
-    out =  _match_matched_variables(ss, ps, σ)
+    out =  _match_matched_variables(ss, ps, σ, fₐ)
     isnothing(out) && return ∅
 
     ss, ps = out
+    # star variables may be empty, others need at least one term
+    isempty(ss) && any(_needs_term, ps) && return ∅
 
     # fₐ is  commutative, maybe associative
     isassociative(fₐ) && return ((ss, ps, σ),) # associative turns ~x into ~~x
@@ -378,15 +395,14 @@ end
 function _match_sequence_variables(ss, ps, fₐ=nothing, σ = match_dict())
     #@show :msv, ss, ps, fₐ, σ
 
-    isempty(ps) && !isempty(ss) && return ∅
-    isempty(ss) && !isempty(ps) && return ∅
+    isempty(ps) && return isempty(ss) ? (σ, ) : ∅
 
-    isempty(ps) && return (σ, )
-
-    out =  _match_matched_variables(ss, ps, σ)
+    out =  _match_matched_variables(ss, ps, σ, fₐ)
     isnothing(out) && return nothing
 
     ss, ps = out
+    isempty(ps) && return isempty(ss) ? (σ, ) : ∅
+    isempty(ss) && any(_needs_term, ps) && return ∅
 
     if !isassociative(fₐ)
         !isempty(filter(is_slot, ps)) && return nothing
@@ -488,6 +504,22 @@ function _match_sequence_variables(ss, ps, fₐ=nothing, σ = match_dict())
 end
 
 ## --- utilities
+# does pattern need at least one subject term? (star and default variables do not)
+_needs_term(p) = !(is_segment(p) || is_defslot(p))
+
+# positions in ss for a combination c of ids (ids[k] is the id of ss[k]),
+# using the first unused position with each id
+function _ids_to_positions(c, ids)
+    inds = Int[]
+    for id ∈ c
+        push!(inds, findfirst(k -> ids[k] == id && k ∉ inds, eachindex(ids)))
+    end
+    inds
+end
+
+# remove ith element; tuple friendly
+_deleteat(ss, j) = [ss[i] for i in eachindex(ss) if i != j]
+
 # combine via union but filter out nothing values
 function _chain(i)
     ii= Iterators.filter(!isnothing, i)
@@ -513,14 +545,17 @@ function _split_take(ds, dp)
     i = Iterators.product((1:n for _ in 1:k)...)
     ii = Iterators.map(i) do inds
         ds′ = copy(ds)
-        σ = ∅
+        σ = match_dict()
         for (i, (p, np)) ∈ zip(inds, (dp))
             s, ns = ds′[i]
-            np > ns && (σ = ∅; break) # won't fit
+            np > ns && return nothing # won't fit
+            pass_any_guard(p, s) || return nothing
+            σ′ = match_dict(varname(p) => s)
+            # same variable may appear with and without a guard
+            iscompatible(σ, σ′) || return nothing
             ds′[i] = s => (ns - np)
-            σ = merge_match(σ, match_dict(varname(p) => s)) # XXX? Check compatible?
+            σ = merge_match(σ, σ′)
         end
-        σ == ∅ && return nothing
         (σ, ds′)
     end
     iii = Iterators.filter(!isnothing, ii)
@@ -574,7 +609,9 @@ function normalize_pattern(pat, sub)
             if unwrap_const(u) == 1
                 if is_operation(:^)(v)
                     w,y = arguments(v)
-                    p = Expr(:call, :^, w, -1*unwrap_const(y))
+                    y′ = unwrap_const(y)
+                    isa(y′, Number) || return pat # can't negate a symbolic exponent
+                    p = Expr(:call, :^, w, -y′)
                 else
                     p = Expr(:call, :^, v, -1)
                 end
@@ -589,7 +626,7 @@ function normalize_pattern(pat, sub)
         end
     elseif (opₛ, opₚ) == (:exp, :^)
         u,v = arguments(pat)
-        if u == ℯ
+        if eq_expr(u, :ℯ)
             return Expr(:call, :exp, v)
         end
     elseif (opₛ, opₚ) == (:/, :^)
@@ -632,10 +669,10 @@ function set_defslots(ps, opₚ, inds, inds′)
         i′ = inds[j]
         pᵢ = ps[i′]
         if is_defslot(pᵢ)
-            pᵢ′ = :(~$(varname(pᵢ)))
+            pᵢ′ = _defslot_to_slot(pᵢ)
         else
             a, b = arguments(pᵢ)
-            pᵢ′ = Expr(:call, :^, a, :(~$(varname(b))))
+            pᵢ′ = Expr(:call, :^, a, _defslot_to_slot(b))
         end
         # replace in ps′ which may be shorter than ps
         i = findall(==(pᵢ), ps′)
@@ -644,12 +681,16 @@ function set_defslots(ps, opₚ, inds, inds′)
     return (ps′, σ′)
 end
 
+# ~!x --> ~x, ~!x::pred --> ~x::pred (keeps any guard)
+_defslot_to_slot(p) = Expr(:call, :~, p.args[2].args[2])
+
 # This handles defslots by
 # looping over all combinations of having the
-# defslot be a slot variable *or* its default value
-# it then combines the resulting matches into θ′′
-# except in the case that *no* defaults is used, in which case
-# that set of matches is the only one returned
+# defslot be a slot variable *or* its default value.
+# Matches using fewer defaults are preferred: the combinations are
+# tried in groups by the number of defaults used and the union of
+# the matches from the first group with any match is returned.
+# A default exponent (n => 1) is not used when the base matches a power.
 function clear_defslots(ss, p, fₐ, θ)
     #@show :cf, ss, p
     opₚ = operation(p)
@@ -657,20 +698,48 @@ function clear_defslots(ss, p, fₐ, θ)
     inds = findall(has_defslot, ps)
 
     θ′′ = MatchDict[]
-    for inds′ = powerset(1:length(inds))
+    nmatched = nothing # number of defaults used by the matches in θ′′
+    for inds′ = powerset(1:length(inds)) # ordered by length(inds′)
+        !isnothing(nmatched) && length(inds′) > nmatched && break
         ps′, σ′ = set_defslots(ps, opₚ, inds, inds′)
+        isempty(ps′) && continue # all defaults; no pattern left to match
         p′ = pterm(opₚ, ps′)
         θ′ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
-        # might need to adjust fₐ
-        if opₚ == :^ && operation(p′) != :^
-            fₐ = nothing
+        # might need to adjust fₐ; p′ may no longer be a call
+        fₐ′ = fₐ
+        if opₚ == :^ && !is_operation(:^)(p′)
+            fₐ′ = nothing
         end
-        itr = match_one_to_one(ss, p′, fₐ, θ′)
-        (isnothing(itr) || isempty(itr)) && continue
-        length(inds′) < length(inds) && return itr # avoid all defslots?
+        itr = match_one_to_one(ss, p′, fₐ′, θ′)
+        isnothing(itr) && continue
+        vars = _defaulted_power_bases(ps, opₚ, inds, inds′)
+        if !isempty(vars)
+            itr = (σ for σ ∈ itr if !any(v -> haskey(σ, v) && _is_power(σ[v]), vars))
+        end
+        isempty(itr) && continue
+        isempty(inds′) && return itr # no defaults needed
+        nmatched = length(inds′)
         θ′′ = union(θ′′, itr)
     end
 
     return θ′′
 
 end
+
+# names of variable bases of powers whose exponent is set to its default
+function _defaulted_power_bases(ps, opₚ, inds, inds′)
+    vars = Symbol[]
+    for j ∈ inds′
+        pᵢ = ps[inds[j]]
+        if is_defslot(pᵢ)
+            opₚ == :^ || continue   # ~!x in a sum or product
+            base = first(ps)        # p is a^(~!x)
+        else
+            base = first(arguments(pᵢ)) # pᵢ is a^(~!x)
+        end
+        is_𝑋(base) && push!(vars, varname(base))
+    end
+    vars
+end
+
+_is_power(x) = iscall(x) && Symbol(operation(x)) == :^
