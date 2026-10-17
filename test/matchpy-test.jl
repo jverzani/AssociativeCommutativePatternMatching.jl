@@ -249,3 +249,11 @@ end
     @test !isnothing(σ) && σ[:x] == :(a + b)
     @test isnothing(_match(:(f(~x, ~x)), :(f(a - b, b - a))))
 end
+
+@testset "powers written differently" begin
+    # exponents in a subject or pattern may be numeric expressions, e.g. :(1//2)
+    @test _match(:(sqrt(~u)), :(x^(1//2)))[:u] == :x
+    @test _match(:((~u)^(1//2)), :(sqrt(x)))[:u] == :x
+    @test _match(:(cbrt(~u)), :(x^(1//3)))[:u] == :x
+    @test _match(:(1 / ~u), :(x^(-1)))[:u] == :x
+end

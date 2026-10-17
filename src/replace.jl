@@ -19,23 +19,7 @@ function _match(pat::Union{Symbol, Expr}, sub)
     first(σ)
 end
 
-# T is symbolic type (Expr, ...) passed to sterm in walk
-# rhs an Expr, Number, Symbol
-# XXX This is an issue and not general enough
-function _rewrite(T, σ::MatchDict, rhs)
-    postwalk(rhs, T) do rhs
-        if is_𝑋(rhs)
-            var = varname(rhs)
-            if haskey(σ, var)
-                return σ[var]
-            else
-                error("No match in $σ for $var from $rhs")
-            end
-        else
-            rhs
-        end
-    end
-end
+# `_rewrite` is in commutative/rule.jl
 
 ## --- walk over expression, but return symtype of T
 function walk(T, ex, inner, outer)

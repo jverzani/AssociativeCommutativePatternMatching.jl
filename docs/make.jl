@@ -2,6 +2,12 @@ using Documenter, AssociativeCommutativePatternMatching
 
 makedocs(sitename="AssociativeCommutativePatternMatching Documentation",
          repo = "github.com/jverzani/AssociativeCommutativePatternMatching.jl.git",
+         pages = [
+             "Home" => "index.md",
+             "Commutative matching" => "commutative.md",
+             "Commutative patterns" => "commutative_patterns.md",
+             "Reference" => "reference.md",
+         ],
          format = Documenter.HTML(
              prettyurls = get(ENV, "CI", nothing) == "true"
          )

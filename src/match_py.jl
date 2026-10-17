@@ -573,6 +573,14 @@ end
 # | exp     | e^...| exp(...)
 # |  /      | ^(-1)| /
 # |  *      |  /   | *
+# the value of a constant, also for an expression holding a number, e.g. :(1//2)
+_constant_value(x) = unwrap_const(x)
+_constant_value(x::Expr) = _isnumber(x) ? eval(x) : x
+_isnumber(::Any) = false
+_isnumber(x::Number) = true
+_isnumber(x::Symbol) = isa(unwrap_const(x), Number)
+_isnumber(x::Expr) = !(_ismatch(x, !_isnumber))
+
 function normalize_pattern(pat, sub)
     iscall(sub) || return pat
     opₛ = Symbol(operation(sub))
@@ -581,35 +589,35 @@ function normalize_pattern(pat, sub)
 
     if (opₛ, opₚ) == (:sqrt, :^)
         u, v = arguments(pat)
-        if eq_expr(v, :(1//2))
+        if isequal(_constant_value(v), 1//2)
             return Expr(:call, :sqrt, u)
         end
     elseif (opₛ, opₚ) == (:cbrt, :^)
         u, v = arguments(pat)
-        if eq_expr(v, :(1//3))
+        if isequal(_constant_value(v), 1//3)
             return Expr(:call, :cbrt, u)
         end
     elseif (opₛ, opₚ) == (:^, :sqrt)
         a, b = arguments(sub)
-        if unwrap_const(b) == 1//2
+        if isequal(_constant_value(b), 1//2)
             v = only(arguments(pat))
             return Expr(:call, :^, v, Expr(:call, ://, 1,2))
         end
     elseif (opₛ, opₚ) == (:^, :cbrt)
         a, b = arguments(sub)
-        if unwrap_const(b) == 1//3
+        if isequal(_constant_value(b), 1//3)
             v = only(arguments(pat))
             return Expr(:call, :^, v, Expr(:call, ://, 1,3))
         end
     elseif (opₛ, opₚ) == (:^, :/)
         a, b = arguments(sub)
-        b′ = unwrap_const(b)
+        b′ = _constant_value(b)
         if isa(b′, Real) && b′ < 0 #unwrap_const(b) == -1
             u, v = arguments(pat)
             if unwrap_const(u) == 1
                 if is_operation(:^)(v)
                     w,y = arguments(v)
-                    y′ = unwrap_const(y)
+                    y′ = _constant_value(y)
                     isa(y′, Number) || return pat # can't negate a symbolic exponent
                     p = Expr(:call, :^, w, -y′)
                 else
@@ -631,7 +639,7 @@ function normalize_pattern(pat, sub)
         end
     elseif (opₛ, opₚ) == (:/, :^)
         u,v = arguments(pat)
-        if eq_expr(v, :(-1))
+        if isequal(_constant_value(v), -1)
             return Expr(:call, :/, 1, u)
         end
     elseif (opₛ, opₚ) == (:*, :/)

@@ -99,7 +99,7 @@ ACPM._eachmatch(:(~!a * sin(~!b *~x + ~!c)^(~!m)), :(sin(2x))) |> collect
 ACPM._eachmatch(:(~!a * sin(~!b *~x::(!Base.Fix2(isa, Number)) + ~!c)^(~!m)), :(sin(2x))) |> collect
 ```
 
-(There are scoping issues with predicates to iron out, due to the use of `eval`.)
+A predicate given by name in a quoted pattern is looked up in `Main` and `Base`. For a predicate defined in another module, write the pattern with `@pattern` (see [Where a guard is found](@ref)), or interpolate the function into the pattern.
 
 * Use of a segment variable:
 
