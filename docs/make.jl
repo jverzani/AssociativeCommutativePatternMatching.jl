@@ -1,15 +1,19 @@
 using Documenter, AssociativeCommutativePatternMatching
+using MaterialDocs
 
 makedocs(sitename="AssociativeCommutativePatternMatching Documentation",
          repo = "github.com/jverzani/AssociativeCommutativePatternMatching.jl.git",
          pages = [
              "Home" => "index.md",
-             "Commutative matching" => "commutative.md",
-             "Commutative patterns" => "commutative_patterns.md",
+             "The two matchers" => "matchers.md",
              "Reference" => "reference.md",
          ],
-         format = Documenter.HTML(
-             prettyurls = get(ENV, "CI", nothing) == "true"
+         format = Material3(;
+             theme = :ocean_depth,
+             dark_mode = :toggle,
+             canonical = "https://jverzani.github.io/AssociativeCommutativePatternMatching.jl",
+             edit_link = "main",
+             assets = String[],
          )
          )
 

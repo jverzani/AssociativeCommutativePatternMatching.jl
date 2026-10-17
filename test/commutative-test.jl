@@ -1,4 +1,4 @@
-## Tests of the commutative matcher, `_ceachmatch` (formerly CommutativePatternMatching)
+## Tests of the commutative matcher, `_ceachmatch`
 
 using AssociativeCommutativePatternMatching
 using Test

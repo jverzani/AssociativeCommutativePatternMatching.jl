@@ -1,8 +1,8 @@
 ## ---- utils.jl (commutative matching) -----
 
-# Utilities used by the commutative matcher (`_ceachmatch`, from
-# CommutativePatternMatching). Those which are the same as in the
-# associative-commutative matcher are shared and found in ../utils.jl.
+# Utilities used by the commutative matcher (`_ceachmatch`). Those which
+# are the same as in the associative-commutative matcher are shared and
+# found in ../utils.jl.
 #
 # MERGE: `merge_vectors_of_matches` has a counterpart, `union_merge`, in ../utils.jl
 # which behaves differently; it is marked `MERGE:` with how it differs.

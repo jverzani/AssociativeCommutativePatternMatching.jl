@@ -58,7 +58,7 @@ The reduced number of allocations in the first call, is due to the values being 
 
 ## Commutative matching
 
-The package also has a matcher which takes commutativity, but not associativity, into account (formerly the `CommutativePatternMatching` package). It is derived from the matcher used for the rule-based methods of [SymbolicIntegration](https://github.com/JuliaSymbolics/SymbolicIntegration.jl). The function `_ceachmatch(pat, sub)` returns a vector of the matches and `_cmatch(pat, sub)` the first match or `nothing`. The macros `@pattern` and `@rule` create patterns and rewriting rules whose guards and right-hand sides are resolved in the calling module; `@acrule` creates a rule which matches with `_match` instead. As with everything else here, they are not exported (SymbolicUtils has macros of these names), so use, e.g., `using AssociativeCommutativePatternMatching: @rule`. The function `_rewrite` rewrites a template using a match.
+The package also has a matcher which takes commutativity, but not associativity, into account. It is derived from the matcher used for the rule-based methods of [SymbolicIntegration](https://github.com/JuliaSymbolics/SymbolicIntegration.jl). The function `_ceachmatch(pat, sub)` returns a vector of the matches and `_cmatch(pat, sub)` the first match or `nothing`. The macros `@pattern` and `@rule` create patterns and rewriting rules whose guards and right-hand sides are resolved in the calling module; `@acrule` creates a rule which matches with `_match` instead. As with everything else here, they are not exported (SymbolicUtils has macros of these names), so use, e.g., `using AssociativeCommutativePatternMatching: @rule`. The function `_rewrite` rewrites a template using a match.
 
 ```
 julia> AssociativeCommutativePatternMatching._ceachmatch(:(~x + ~y), :(a + b + c))
@@ -76,9 +76,8 @@ include("utils.jl")
 include("syntactic_match.jl")
 include("match_py.jl")
 include("replace.jl")
-include("simplify.jl")
 
-# commutative matching (formerly CommutativePatternMatching)
+# commutative matching
 include("commutative/utils.jl")
 include("commutative/rule2a.jl")
 include("commutative/pattern.jl")

@@ -175,8 +175,9 @@ function _rewrite(σ::MatchDict, rhs::Expr, S)
 end
 
 # a name in a template, or `nothing`. Unlike a guard (`_resolve_name`), this
-# package is also searched, as the simplify rules use `unwrap_const`; it is
-# last, so a user's function of the same name as an internal one is used.
+# package is also searched, so a template may use its functions, such as
+# `unwrap_const`; it is last, so a user's function of the same name as an
+# internal one is used.
 function _resolve_template_name(x::Symbol)
     for M ∈ (Main, Base, @__MODULE__)
         isdefined(M, x) && return getfield(M, x)
