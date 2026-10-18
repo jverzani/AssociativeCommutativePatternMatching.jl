@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The two matchers — AssociativeCommutativePatternMatching Documentation</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=91dfed79">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=44fa3b5a">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap">
   <meta name="title" content="The two matchers — AssociativeCommutativePatternMatching Documentation">
   <meta property="og:title" content="The two matchers — AssociativeCommutativePatternMatching Documentation">
@@ -119,6 +119,17 @@ Base.ImmutableDict{Symbol, Any} with 2 entries:
   :m =&gt; -1//2
   :u =&gt; :x</code></pre>
 </div>
+<h3 id="Compiled-patterns" class="md-heading">Compiled patterns<a href="#Compiled-patterns" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>Each time it is called, <code class="md-code-inline">_ceachmatch</code> works out from the pattern which parts are slots, segments or default slots, what each guard is, and which forms of a power apply. <a href="../reference/#AssociativeCommutativePatternMatching.compile_pattern"><code class="md-code-inline">compile_pattern</code></a> does this once. A compiled pattern may be used in place of the pattern, with the same matches, in the same order, found faster:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; c = ACPM.compile_pattern(:((~x)^(~x)));
+
+julia&gt; ACPM._cmatch(c, :((x + p)^(x + p)))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; :(x + p)</code></pre>
+</div>
+<p>A rule made by <code class="md-code-inline">@rule</code> compiles its pattern when it is made, so it is worth compiling a pattern only when matching with it repeatedly outside a rule.</p>
       </article>
       <footer class="md-footer">
 <p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
@@ -133,6 +144,7 @@ Base.ImmutableDict{Symbol, Any} with 2 entries:
           <a class="md-toc-link md-toc-h2" href="#The-commutative-matcher">The commutative matcher</a>
             <a class="md-toc-link md-toc-h3" href="#Segments">Segments</a>
             <a class="md-toc-link md-toc-h3" href="#Powers-written-differently">Powers written differently</a>
+            <a class="md-toc-link md-toc-h3" href="#Compiled-patterns">Compiled patterns</a>
       </div>
     </aside>
   </div>
@@ -142,6 +154,6 @@ Base.ImmutableDict{Symbol, Any} with 2 entries:
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=91dfed79"></script>
+  <script src="../assets/materialdocs.js?v=44fa3b5a"></script>
 </body>
 </html>

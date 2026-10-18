@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Reference — AssociativeCommutativePatternMatching Documentation</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=72af4141">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=a43a5fb3">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap">
   <meta name="title" content="Reference — AssociativeCommutativePatternMatching Documentation">
   <meta property="og:title" content="Reference — AssociativeCommutativePatternMatching Documentation">
@@ -60,6 +60,7 @@
 <li><a href="#AssociativeCommutativePatternMatching._cmatch-Tuple{Any, Any}"><code>AssociativeCommutativePatternMatching._cmatch</code></a></li>
 <li><a href="#AssociativeCommutativePatternMatching._replace-Tuple{Any, Any, Pair}"><code>AssociativeCommutativePatternMatching._replace</code></a></li>
 <li><a href="#AssociativeCommutativePatternMatching._rewrite-Tuple{Base.ImmutableDict{Symbol, Any}, Any}"><code>AssociativeCommutativePatternMatching._rewrite</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching.compile_pattern"><code>AssociativeCommutativePatternMatching.compile_pattern</code></a></li>
 <li><a href="#AssociativeCommutativePatternMatching.@acrule-Tuple{Any}"><code>AssociativeCommutativePatternMatching.@acrule</code></a></li>
 <li><a href="#AssociativeCommutativePatternMatching.@pattern-Tuple{Any}"><code>AssociativeCommutativePatternMatching.@pattern</code></a></li>
 <li><a href="#AssociativeCommutativePatternMatching.@rule-Tuple{Any}"><code>AssociativeCommutativePatternMatching.@rule</code></a></li>
@@ -337,6 +338,19 @@ _rewrite(S, σ, rhs)</code></pre>
 <p>The subject type <code class="md-code-inline">S</code> is found from the values in <code class="md-code-inline">σ</code> if not given.</p>
 </div>
 </div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching.compile_pattern">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching.compile_pattern</code></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">compile_pattern(pat)</code></pre>
+</div>
+<p>A pattern compiled for the commutative matcher: the questions <code class="md-code-inline">_ceachmatch</code> asks of the pattern at each call are answered once. Use it in place of the pattern in <code class="md-code-inline">_ceachmatch</code> or <code class="md-code-inline">_cmatch</code>; the matches are the same. A rule made by <a href="../reference/#AssociativeCommutativePatternMatching.@rule-Tuple{Any}"><code class="md-code-inline">@rule</code></a> compiles its pattern.</p>
+</div>
+</div>
 <div class="md-docstring" id="AssociativeCommutativePatternMatching.@acrule-Tuple{Any}">
 <div class="md-docstring-header">
 <h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching.@acrule</code> — <span class="md-docstring-sig">Tuple{Any}</span></h4>
@@ -403,7 +417,7 @@ julia&gt; AssociativeCommutativePatternMatching._ceachmatch(Ext.pat, :(sin(a)))
 </div>
 <p>Create a rule which rewrites a subject matching the pattern <code class="md-code-inline">lhs</code> into <code class="md-code-inline">rhs</code>, with the wildcards of <code class="md-code-inline">rhs</code> replaced by their matched values.</p>
 <p><code class="md-code-inline">lhs</code> is a pattern, as for <a href="../reference/#AssociativeCommutativePatternMatching.@pattern-Tuple{Any}"><code class="md-code-inline">@pattern</code></a>. <code class="md-code-inline">rhs</code> is Julia code: it is compiled into a function of the match where the macro is called, so functions and variables it refers to are those of the calling module. A segment (<code class="md-code-inline">~~x</code>) is replaced by its tuple.</p>
-<p>For a symbolic subject <code class="md-code-inline">rhs</code> is evaluated; for an <code class="md-code-inline">Expr</code> subject, the matched values are substituted into <code class="md-code-inline">rhs</code> and an <code class="md-code-inline">Expr</code> is returned.</p>
+<p>For a symbolic subject <code class="md-code-inline">rhs</code> is evaluated; for an <code class="md-code-inline">Expr</code> subject, the matched values are substituted into <code class="md-code-inline">rhs</code> and an <code class="md-code-inline">Expr</code> is returned. A right-hand side of <code class="md-code-inline">~</code> alone returns the match itself.</p>
 <p><strong>Examples</strong></p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
@@ -441,6 +455,6 @@ true</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=72af4141"></script>
+  <script src="../assets/materialdocs.js?v=a43a5fb3"></script>
 </body>
 </html>
