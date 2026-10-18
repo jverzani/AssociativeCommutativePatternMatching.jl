@@ -15,6 +15,7 @@ module RulesA
     r_seg = @rule ~x + ~~y => ~x * length(~~y)
     r_g   = @rule sin(~x::(u -> string(u) == "a")) => g(~x)
     r_wrap = @rule ~x + ~~~y => ~~~y
+    r_match = @rule (~x)^(~n) => ~ # the match itself
 end
 
 module RulesB
@@ -30,6 +31,7 @@ module RulesAC
     r_assoc = @acrule ~x + ~y => (~x) * (~y)
     r_guard = @acrule sin(~x::isfoo) => double(~x)
     r_seg   = @acrule ~x + ~~y => ~x * length(~~y)
+    r_match = @acrule ~x + sin(~y) => ~
 end
 
 function rule_tests()
@@ -51,6 +53,14 @@ function rule_tests()
         @test same(RulesA.r_def(S(:(3 * x^2))), expect(:(3 * 2 * x^(2 - 1)), :(6x)))
         @test same(RulesA.r_def(S(:(x^2))), expect(:(1 * 2 * x^(2 - 1)), :(2x)))
         @test same(RulesA.r_op(S(:(sin(a)))), S(:(sin(2a))))
+
+        # `=> ~` returns the match
+        σ = RulesA.r_match(S(:(a^3)))
+        @test σ isa CPM.MatchDict && binds(σ, :x => a, :n => 3)
+        @test isequal(σ, CPM._cmatch(:((~x)^(~n)), S(:(a^3))))
+        @test RulesA.r_match(S(:(sin(a)))) === nothing
+        σ = RulesAC.r_match(S(:(a + b + sin(c))))
+        @test σ isa CPM.MatchDict && same(σ[:y], c)
 
         if !isExpr
             # rhs is Julia code, run on the matched values

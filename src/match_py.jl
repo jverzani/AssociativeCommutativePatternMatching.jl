@@ -71,7 +71,7 @@ function match_one_to_one(ss, p, fₐ = nothing, θ = (match_dict(),))
             σ′ = match_dict(varname(opₚ) => opₛ)
             θ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
         else
-            Symbol(opₛ) == opₚ || return ∅ # can't have defslot in p at this level
+            _opsym(opₛ) == opₚ || return ∅ # can't have defslot in p at this level
         end
         ps = arguments(p)
         fₐ′ = isassociative(opₛ) ? opₛ : nothing
@@ -203,7 +203,7 @@ function _match_matched_variables(ss, ps, σ, fₐ=nothing)
                 # in an associative context the subject is flattened, so
                 # a value fₐ(a,b) bound elsewhere appears as a, b
                 itr = (s,)
-                if isassociative(fₐ) && iscall(s) && Symbol(operation(s)) == Symbol(fₐ) &&
+                if isassociative(fₐ) && iscall(s) && _opsym(operation(s)) == _opsym(fₐ) &&
                     isnothing(findfirst(isequal(s), ss))
                     itr = arguments(s)
                 end
@@ -269,7 +269,7 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
                             θ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
                         elseif !any(is_defslot, arguments(p))
                             opₛ = first(normalize_subject(s, p))
-                            Symbol(opₛ) == opₚ || continue # stop this track
+                            _opsym(opₛ) == opₚ || continue # stop this track
                         end
                     end
                     θ = match_one_to_one([s], p, fₐ, θ)
@@ -318,7 +318,7 @@ function check_nonmatching_defslot(s, p, θ′)
     #@show :cnd, s, p
     if iscall(p)
         opₚ = operation(p)
-        if (!iscall(s) || (Symbol(operation(s)) != opₚ))
+        if (!iscall(s) || (_opsym(operation(s)) != opₚ))
             if opₚ ∈ (:+, :*)
                 argsₚ = arguments(p)
                 inds = findall(is_defslot, argsₚ)
@@ -585,7 +585,7 @@ _isnumber(x::Expr) = !(_ismatch(x, !_isnumber))
 
 function normalize_pattern(pat, sub)
     iscall(sub) || return pat
-    opₛ = Symbol(operation(sub))
+    opₛ = _opsym(operation(sub))
     iscall(pat) || return pat # are there no op examples?
     opₚ = operation(pat)
 
@@ -667,14 +667,14 @@ end
 function normalize_subject(sub, pat)
     opₛ, args = operation(sub), arguments(sub)
     iscall(pat) || return (opₛ, args)
-    opₚ, op = operation(pat), Symbol(opₛ)
+    opₚ, op = operation(pat), _opsym(opₛ)
     if opₚ == :^
         op == :sqrt && return (:^, Any[only(args), 1//2])
         op == :exp && return (:^, Any[ℯ, only(args)])
         if op == :/ && _isone(_unwrap_const(first(args)))
             v = last(args)
             iscall(v) || return (:^, Any[v, -1])
-            opᵥ = Symbol(operation(v))
+            opᵥ = _opsym(operation(v))
             opᵥ == :^ && return (:^, Any[first(arguments(v)), _negate(last(arguments(v)))])
             opᵥ == :sqrt && return (:^, Any[only(arguments(v)), -1//2])
             opᵥ == :exp && return (:^, Any[ℯ, _negate(only(arguments(v)))])
@@ -787,4 +787,4 @@ function _defaulted_power_bases(ps, opₚ, inds, inds′)
     vars
 end
 
-_is_power(x) = iscall(x) && Symbol(operation(x)) == :^
+_is_power(x) = iscall(x) && _opsym(operation(x)) == :^

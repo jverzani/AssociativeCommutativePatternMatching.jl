@@ -132,3 +132,23 @@ function ac_symbolic_tests()
         @test CPM._match(:(~x * (~!a + ~!b * ~x)^(~!m)), S(:(x * (2 + 3x)^4))) !== nothing
     end
 end
+
+# An operation may be a callable struct, such as SimpleExpressions'
+# `SymbolicFunction{:∫}`; its name is how it prints, not the name of its type.
+struct PrintsAsG <: Function end
+(::PrintsAsG)(x) = x
+Base.show(io::IO, ::PrintsAsG) = print(io, "g")
+
+function callable_op_tests()
+    @testset "callable struct as an operation" begin
+        @test CPM._opsym(PrintsAsG()) === :g
+        @test CPM._opsym(sin) === :sin
+        S = backend("SimpleExpressions").build
+        ∫ = SimpleExpressions.SymbolicFunction(:∫)
+        sub = ∫(S(:(x^2)), S(:x))
+        for pat ∈ (:(∫(~f, ~x)), :(∫((~x)^(~n), ~x)))
+            @test matchone(pat, sub) !== nothing
+            @test CPM._match(pat, sub) !== nothing
+        end
+    end
+end

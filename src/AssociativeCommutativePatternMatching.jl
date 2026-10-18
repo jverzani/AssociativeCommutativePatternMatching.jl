@@ -80,6 +80,7 @@ include("replace.jl")
 # commutative matching
 include("commutative/utils.jl")
 include("commutative/rule2a.jl")
+include("commutative/compiled.jl")
 include("commutative/pattern.jl")
 include("commutative/rule.jl")
 

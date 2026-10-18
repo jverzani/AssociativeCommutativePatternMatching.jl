@@ -105,7 +105,17 @@ _groupby(pred, t) = (t = filter(pred,t), f=filter(!pred, t))
 
 
 ## Expression related methods
-_is_operation(op) = ex -> iscall(ex) && operation(ex) ∈ (op, Symbol(op))
+# the name of an operation; `nameof`, unlike `Symbol(f)`, does not print `f`.
+# For a callable struct (e.g. SimpleExpressions' `SymbolicFunction{:∫}`),
+# `nameof` gives the name of its type, so it is printed, as `Symbol` does.
+_opsym(op::Symbol) = op
+function _opsym(op::Function)
+    n = nameof(op)
+    n === nameof(typeof(op)) ? Symbol(op) : n
+end
+_opsym(@nospecialize(op)) = Symbol(op)
+
+_is_operation(op) = (s = _opsym(op); ex -> iscall(ex) && _opsym(operation(ex)) === s)
 
 # need to compare x and p when p is from an expression
 # trick -- SymEngine.Basic <: Number
@@ -206,13 +216,13 @@ end
 
 # a subject `u / v` as a product of powers: the factors of `u` (dropping a 1),
 # and for each factor of `v` its inverse, `f^-1`, or `b^(-k)` for a power `b^k`
-_factors(x) = iscall(x) && Symbol(operation(x)) === :* ? arguments(x) : (x,)
+_factors(x) = iscall(x) && _opsym(operation(x)) === :* ? arguments(x) : (x,)
 function _invert_data(f)
     # a number, possibly symbolic (SymbolicUtils keeps sqrt(1)), is inverted as a
     # number: a term `c^-1` with an integer `c` would raise a DomainError
     c = _unwrap_const(f)
     isa(c, Number) && return isa(c, Integer) ? 1 // c : inv(c)
-    if iscall(f) && Symbol(operation(f)) === :^
+    if iscall(f) && _opsym(operation(f)) === :^
         b, k = arguments(f)
         return sterm(^, (b, _negate(k)))
     end

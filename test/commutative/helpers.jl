@@ -1,13 +1,19 @@
 ## Helpers for comparing matches in a backend-independent way
 
-eachm(pat, sub) = CPM._ceachmatch(pat, sub)
+# the matches; those of the compiled pattern must be the same
+function eachm(pat, sub)
+    σs = CPM._ceachmatch(pat, sub)
+    @test isequal(CPM._ceachmatch(CPM.compile_pattern(pat), sub), σs)
+    σs
+end
 
 # first match or `nothing`, by `_cmatch`, which stops at the first match;
-# it must be the first match of `_ceachmatch`
+# it must be the first match of `_ceachmatch`, and that of the compiled pattern
 function matchone(pat, sub)
     σ = CPM._cmatch(pat, sub)
     σs = eachm(pat, sub)
     @test isequal(σ, isempty(σs) ? nothing : first(σs))
+    @test isequal(CPM._cmatch(CPM.compile_pattern(pat), sub), σ)
     σ
 end
 
