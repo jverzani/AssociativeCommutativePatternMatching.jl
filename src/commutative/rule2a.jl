@@ -47,21 +47,25 @@ A pattern can only have one wildcard of a given name (no ~x + ~~x, say).
 # TODO ~a*(~b*~c) currently will not match a*b*c . a fix is possible
 
 # for when the rule contains a symbol, like ℯ, or a literal number
-function check_expr_r(@nospecialize(data), rule::Real, σs::𝑀)::𝑀
+function check_expr_r(@nospecialize(data), rule::Real, σs::𝑀, once::Bool=false)::𝑀
     eq_expr(rule, data) && return σs
     return NO_MATCH
 end
 
-function check_expr_r(@nospecialize(data), rule::Symbol, σs::𝑀)::𝑀
+function check_expr_r(@nospecialize(data), rule::Symbol, σs::𝑀, once::Bool=false)::𝑀
     eq_expr(data, rule) && return σs
     return NO_MATCH
 end
 
 # main function
-check_expr_r(data, rule::Expr)::𝑀 =
-    check_expr_r(data, rule, [MatchDict()])
+# With `once`, only the first match is needed: a search may stop at its first
+# match when nothing after it can reject that match, so `once` is passed on
+# only to the last step of a search (the last argument, the last pattern of a
+# commutative operation, ...). The first match is that of the full search.
+check_expr_r(data, rule; once::Bool=false)::𝑀 =
+    check_expr_r(data, rule, [MatchDict()], once)
 
-function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀)::𝑀
+function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀, once::Bool=false)::𝑀
     # @show :cer, data, rule
     if !iscall(rule)
         #@show :what_is, rule
@@ -80,9 +84,9 @@ function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀)::𝑀
         arg_data, arg_rule = arguments(data), arguments(rule)
         if length(arg_data) > 1
             if iscommutative(opᵣ)
-                return check_commutative(arg_data, arg_rule, σs)
+                return check_commutative(arg_data, arg_rule, σs, once)
             else
-                return ceoaa(arg_data, arg_rule, σs)
+                return ceoaa(arg_data, arg_rule, σs, once)
             end
         else
             data, rule = (isempty(arg_data) ? arg_data : only(arg_data)), only(arg_rule)
@@ -91,13 +95,13 @@ function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀)::𝑀
 
     # rule is a single variable
     if is_𝑋(rule)
-        return just_variable(data, rule, σs)
+        return just_variable(data, rule, σs, once)
     end
 
     # if there is a deflsot in the arguments
     i = findfirst(is_defslot, arguments(rule))
     if i !== nothing
-        return has_defslot(i, data, rule, σs)
+        return has_defslot(i, data, rule, σs, once)
     end
 
     # if there is a segment in the (only) argument
@@ -128,7 +132,7 @@ function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀)::𝑀
                       (:/,:/),
                       )
 
-        return different_powers(data, rule, σs)
+        return different_powers(data, rule, σs, once)
     end
 
 
@@ -153,16 +157,16 @@ function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀)::𝑀
 
     (length(arg_data) != length(arg_rule)) && return MatchDict[]
     if iscommutative(opᵣ)
-        σ′s = check_commutative(arg_data, arg_rule, σs)
+        σ′s = check_commutative(arg_data, arg_rule, σs, once)
         return isempty(σ′s) ? NO_MATCH : σ′s
     end
     # normal checks
-    return ceoaa(arg_data, arg_rule, σs)
+    return ceoaa(arg_data, arg_rule, σs, once)
 end
 
 # check expression of all arguments
 # elements of arg_rule can be Expr or Real
-function ceoaa(@nospecialize(arg_data), arg_rule, σs::𝑀)::𝑀
+function ceoaa(@nospecialize(arg_data), arg_rule, σs::𝑀, once::Bool=false)::𝑀
     if all(is_𝑋, arg_rule) && !any(is_op, arg_rule)
         nseg = count(is_segment, arg_rule) # no segment? need same wild
         iszero(nseg) && count(is_slot, arg_rule) != length(arg_data) &&
@@ -176,15 +180,17 @@ function ceoaa(@nospecialize(arg_data), arg_rule, σs::𝑀)::𝑀
         return has_any_plus(nothing, arg_data, nothing, arg_rule,  σs)
     end
     σ′s = σs
+    n, i = min(length(arg_data), length(arg_rule)), 0
     for (a, b) in zip(arg_data, arg_rule)
-        σ′s = check_expr_r(a, b, σ′s)
+        i += 1
+        σ′s = check_expr_r(a, b, σ′s, once && i == n) # later arguments may reject a match
         σ′s == NO_MATCH && return NO_MATCH
     end
     return σ′s
 end
 
 # match a single variable
-function just_variable(@nospecialize(data), rule, σs::𝑀)::𝑀
+function just_variable(@nospecialize(data), rule, σs::𝑀, once::Bool=false)::𝑀
     #@show :jv, data, rule
     @assert is_𝑋(rule)
     var = varname(rule)
@@ -203,12 +209,13 @@ function just_variable(@nospecialize(data), rule, σs::𝑀)::𝑀
             end
             push!(ms, match_dict(σ, var=> val))
         end
+        once && !isempty(ms) && break
     end
     return isempty(ms) ? NO_MATCH : ms
 end
 
 # expression has defslot
-function has_defslot(i, @nospecialize(data), rule, σs)
+function has_defslot(i, @nospecialize(data), rule, σs, once::Bool=false)
     # @show :has_defslot, data, rule
     op = operation(rule)
     if op ∈ (:^, :/)
@@ -221,7 +228,7 @@ function has_defslot(i, @nospecialize(data), rule, σs)
 
     # build rule expr without defslot and check it
     newr = Expr(:call, operation(rule), ps...) # not pterm here!
-    σ′s = check_expr_r(data, newr, σs)
+    σ′s = check_expr_r(data, newr, σs, once)
     σ′s != MatchDict[] && return σ′s # had a match
 
     # if no normal match, check only the non-defslot part of the rule
@@ -264,7 +271,7 @@ end
 
 # make powers equivalent for checking
 # e.g. sqrt(x) --> x^(1//2)
-function different_powers(@nospecialize(data), rule, σs::𝑀)::𝑀
+function different_powers(@nospecialize(data), rule, σs::𝑀, once::Bool=false)::𝑀
     # @show :different_powers, data, rule
     opᵣ, opₛ = operation(rule), Symbol(operation(data))
     arg_data = arguments(data)
@@ -274,7 +281,7 @@ function different_powers(@nospecialize(data), rule, σs::𝑀)::𝑀
     if opᵣ === :^
         # try first normal checks
         if (opₛ === :^)
-            σ′s = ceoaa(arg_data, arg_rule, σs)
+            σ′s = ceoaa(arg_data, arg_rule, σs, once)
             !isempty(σ′s) && return σ′s
         end
 
@@ -337,7 +344,7 @@ function different_powers(@nospecialize(data), rule, σs::𝑀)::𝑀
             return MatchDict[]
 
         end
-        return ceoaa(fad, arg_rule, σs)
+        return ceoaa(fad, arg_rule, σs, once)
 
     elseif opᵣ === :sqrt
         if (opₛ === :sqrt)
@@ -349,7 +356,7 @@ function different_powers(@nospecialize(data), rule, σs::𝑀)::𝑀
             return MatchDict[]
         end
 
-        return ceoaa(tocheck, arg_rule, σs)
+        return ceoaa(tocheck, arg_rule, σs, once)
 
     elseif opᵣ === :exp
         if (opₛ === :exp)
@@ -361,11 +368,11 @@ function different_powers(@nospecialize(data), rule, σs::𝑀)::𝑀
             return MatchDict[]
         end
 
-        return ceoaa(tocheck, arg_rule, σs)
+        return ceoaa(tocheck, arg_rule, σs, once)
     elseif (opᵣ, opₛ) == (:/, :*)
         # rule is / but may be canonicalized to
         # turn rule into ^-1 terms and check commutatively
-        return check_commutative(arg_data, _rule_as_powers(rule), σs)
+        return check_commutative(arg_data, _rule_as_powers(rule), σs, once)
 
     elseif (opᵣ, opₛ) == (:/, :/)
         # the matches numerator to numerator and denominator to denominator,
@@ -373,8 +380,9 @@ function different_powers(@nospecialize(data), rule, σs::𝑀)::𝑀
         # `(~u)^(~p) / ~x` and the subject `1 / (x * log(x))`, as
         # `[(~u)^(~p), (~x)^-1]` and `[x^-1, log(x)^-1]`. Both are kept, as a
         # match of one kind may conflict with the rest of the pattern.
-        σ′s = ceoaa(arg_data, arg_rule, σs)
-        σ″s = check_commutative(_data_as_powers(data), _rule_as_powers(rule), σs)
+        σ′s = ceoaa(arg_data, arg_rule, σs, once)
+        once && !isempty(σ′s) && return σ′s
+        σ″s = check_commutative(_data_as_powers(data), _rule_as_powers(rule), σs, once)
         return unique!(vcat(σ′s, σ″s))
 
     elseif (opᵣ, opₛ) == (:/, :^)
@@ -401,13 +409,13 @@ function different_powers(@nospecialize(data), rule, σs::𝑀)::𝑀
         end
         # multiply by a once
         rule′ = (isa(a, Number) && isone(a)) ? b′ : Expr(:call, :*, a, b′)
-        return check_expr_r(data, rule′, σs)
+        return check_expr_r(data, rule′, σs, once)
 
     #end
     elseif (opᵣ, opₛ) == (:*, :/)
         u, v = arg_data
         v′ = sterm(^, [v, -1])
-        return check_commutative((u, v′), arg_rule,  σs)
+        return check_commutative((u, v′), arg_rule,  σs, once)
     end
     return NO_MATCH
 end
@@ -698,7 +706,7 @@ end
 # a duplicate for pruning purposes.
 @inline _cheap_isequal(a, b) = a === b || (typeof(a) === typeof(b) && isequal(a, b))
 
-function _check_commutative!(out, used, @nospecialize(arg_data), arg_rule, order, k, σs::𝑀)::𝑀
+function _check_commutative!(out, used, @nospecialize(arg_data), arg_rule, order, k, σs::𝑀, once::Bool=false)::𝑀
     # @show :check_commutative
     σs == NO_MATCH && return out
     k > length(order) && return _append_unique!(out, σs)
@@ -729,22 +737,23 @@ function _check_commutative!(out, used, @nospecialize(arg_data), arg_rule, order
         end
         isdup && continue
 
-        σ′s = check_expr_r(val, pat, σs)
+        σ′s = check_expr_r(val, pat, σs, once && k == length(order)) # later patterns may reject a match
         σ′s == NO_MATCH && continue
         used[j] = true
-        _check_commutative!(out, used, arg_data, arg_rule, order, k + 1, σ′s)
+        _check_commutative!(out, used, arg_data, arg_rule, order, k + 1, σ′s, once)
         used[j] = false
+        once && !isempty(out) && break
     end
     return out
 end
 
-function check_commutative(@nospecialize(arg_data), arg_rule, σs::𝑀)::𝑀
+function check_commutative(@nospecialize(arg_data), arg_rule, σs::𝑀, once::Bool=false)::𝑀
     # commutative checks
     length(arg_data) != length(arg_rule) && return NO_MATCH
 
     order = sortperm(collect(eachindex(arg_rule)); by = i -> _commutative_priority(arg_rule[i]))
     used = falses(length(arg_data))
     σ′′s = MatchDict[]
-    _check_commutative!(σ′′s, used, arg_data, arg_rule, order, 1, σs)
+    _check_commutative!(σ′′s, used, arg_data, arg_rule, order, 1, σs, once)
     return isempty(σ′′s) ? NO_MATCH : σ′′s
 end

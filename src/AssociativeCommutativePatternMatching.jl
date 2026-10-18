@@ -104,7 +104,7 @@ Return the first match of the pattern `pat` to the subject `sub`, or
 `nothing` if there is no match. See [`_ceachmatch`](@ref).
 """
 function _cmatch(pat, sub)
-    σs = _ceachmatch(pat, sub)
+    σs = check_expr_r(sub, pat; once=true) # stops at the first match
     isempty(σs) && return nothing
     first(σs)
 end

@@ -52,6 +52,8 @@ table.summary { width: 100%; }
 .summary td.name b { display: block; font-weight: 600; }
 .summary td.name span { color: var(--muted); font-size: .85rem; }
 .summary td.big { font: 600 1.1rem/1 var(--mono); }
+.summary th.grouphead { text-align: center; border-left: 1px solid var(--rule); }
+.summary .gstart { border-left: 1px solid var(--rule); }
 
 /* findings */
 ol.findings { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; max-width: 78ch; }
@@ -116,7 +118,7 @@ footer .mono { color: var(--fg); }
   <section>
     <h2>Summary</h2>
     <div class="tablewrap"><table class="summary" id="summary"></table></div>
-    <p class="muted" style="font-size:.88rem">A case is <i>matched</i> when the matcher finds at least one match. <i>All matches</i> sums every match found (for rule2, which stops at the first, this is the number matched). Times are per call, for the first match, measured warm; compare them only within this run.</p>
+    <p class="muted" style="font-size:.88rem">A case is <i>matched</i> when the matcher finds at least one match. <i>All matches</i> sums every match found (for rule2, which stops at the first, this is the number matched). Times are per call, measured warm: for the first match (what a rule uses: <code>_match</code>, <code>_cmatch</code>, SymbolicUtils' matcher returning its first bindings, and rule2) and for finding every match (collecting <code>_eachmatch</code>, <code>_ceachmatch</code>, and SymbolicUtils' matcher with a continuation that records each match and backtracks). rule2 finds only one match. The matchers find different numbers of matches, so the all-matches times do not measure the same work. Compare times only within this run.</p>
   </section>
 
   <section>
@@ -130,7 +132,7 @@ footer .mono { color: var(--fg); }
       <li><b>A quotient as a product.</b> SymbolicUtils' <code>@rule</code> does not match <code>(~u)^(~m) * ~v</code> against <code>a / b</code>, or <code>(~u)^(~m) * (~v)^(~n)</code> against <code>a^2 / b^3</code> (cases 50–51). The other three do, by reading the quotient as <code>a * b^-1</code>. All four read <code>1/x</code>, <code>sqrt(x)</code> and <code>exp(x)</code> as powers.</li>
       <li><b>Guards that throw.</b> Enumerating every match of <code>~a::isinteger * ~x</code> against <code>3x</code> makes SymbolicUtils call <code>isinteger(x)</code>, which throws (case 40). A rule only uses the first match, <code>a =&gt; 3</code>, so this stays hidden. The ACPM matchers treat a guard that throws as false.</li>
       <li><b>Operation slots.</b> rule2 does not match <code>(~F)(~x)</code> (cases 57–58); the others do.</li>
-      <li><b>Speed.</b> For a first match, rule2 and SymbolicUtils take about a microsecond (medians <span id="med-si"></span> and <span id="med-su"></span> µs). <code>_ceachmatch</code> is a few times slower (<span id="med-c"></span> µs) and <code>_eachmatch</code> about six times slower again (<span id="med-ac"></span> µs). Its slowest case is the product of two binomial powers, case 55, at <span id="max-ac"></span> µs. A guard that throws is slow for the ACPM matchers: <code>~a::isinteger * ~x</code> costs <code>_ceachmatch</code> <span id="t40"></span> µs.</li>
+      <li><b>Speed.</b> For a first match, rule2 and SymbolicUtils take about a microsecond (medians <span id="med-si"></span> and <span id="med-su"></span> µs). <code>_ceachmatch</code> is a few times slower (<span id="med-c"></span> µs) and <code>_eachmatch</code> about six times slower again (<span id="med-ac"></span> µs). Its slowest case is the product of two binomial powers, case 55, at <span id="max-ac"></span> µs. Finding every match, the medians are <span id="medall-su"></span> µs for SymbolicUtils, <span id="medall-c"></span> µs for <code>_ceachmatch</code> and <span id="medall-ac"></span> µs for <code>_eachmatch</code>. These are close to the first-match medians, as most cases have only one match. The difference shows where there are several: for <code>~x + ~y + ~z</code> against <code>a + b + c</code> (six matches each), the times are 6.9, 10.4 and 69 µs. <code>_cmatch</code> stops at the first match, so it rarely reaches a guard that throws: <code>~a::isinteger * ~x</code> takes <span id="t40"></span> µs, while <code>_ceachmatch</code>, finding every match, calls <code>isinteger(x)</code> and takes <span id="t40all"></span> µs.</li>
       <li><b>Two bugs in <code>_eachmatch</code> were found and fixed in this comparison.</b> On SymbolicUtils terms it threw on 7 of these cases: it compared terms with <code>==</code>, which is not a <code>Bool</code> for SymbolicUtils, and indexed the arguments with a vector of positions, which SymbolicUtils' argument type does not support.</li>
     </ol>
   </section>
@@ -143,6 +145,7 @@ footer .mono { color: var(--fg); }
         <span><i class="sw c-match"></i>matches (count; distinct in parentheses if fewer)</span>
         <span><i class="sw c-zero"></i>no match</span>
         <span><i class="sw c-err"></i>error</span>
+        <span>times in matcher order; all matches omit rule2</span>
       </div>
     </div>
     <div class="tablewrap"><table class="cases" id="cases"></table></div>
@@ -185,11 +188,15 @@ $("versions").innerHTML = "Julia " + esc(v.Julia) + " · AssociativeCommutativeP
 
 // ---- summary
 {
-  let h = `<thead><tr><th class="name">Matcher</th><th>Matched</th><th>All matches</th><th>Errors</th><th>Wrong</th><th>Median µs</th><th>Max µs</th><th>Total µs</th></tr></thead><tbody>`;
+  let h = `<thead><tr><th class="name" rowspan="2">Matcher</th><th rowspan="2">Matched</th><th rowspan="2">All matches</th><th rowspan="2">Errors</th><th rowspan="2">Wrong</th>
+    <th colspan="3" class="grouphead">First match, µs</th><th colspan="3" class="grouphead">All matches, µs</th></tr>
+    <tr><th>Median</th><th>Max</th><th>Total</th><th class="gstart">Median</th><th>Max</th><th>Total</th></tr></thead><tbody>`;
   let nm = 0;
   for (const m of M) {
     const rs = cases.map(c => c[m.key]);
     const ts = rs.filter(r => r.t_first != null).map(r => r.t_first);
+    const ta = m.key === "si" ? [] : rs.filter(r => r.t_all != null).map(r => r.t_all);
+    const tstats = t => t.length ? `<td>${fmt(median(t))}</td><td>${fmt(Math.max(...t))}</td><td>${fmt(t.reduce((a, b) => a + b, 0))}</td>` : `<td>–</td><td>–</td><td>–</td>`;
     const tot = rs.reduce((s, r) => s + (r.total || 0), 0);
     nm += tot;
     const errs = rs.filter(r => r.error || r.error_all).length;
@@ -197,14 +204,16 @@ $("versions").innerHTML = "Julia " + esc(v.Julia) + " · AssociativeCommutativeP
     h += `<tr><td class="name"><b>${esc(m.name)}</b><span>${esc(m.pkg)} · ${esc(m.how)}</span></td>
       <td class="big">${rs.filter(matched).length}<span class="muted" style="font:400 .8rem var(--body)"> / ${cases.length}</span></td>
       <td class="big">${tot}</td><td>${errs}</td><td>${wrong}</td>
-      <td>${fmt(median(ts))}</td><td>${fmt(Math.max(...ts))}</td><td>${fmt(ts.reduce((a, b) => a + b, 0))}</td></tr>`;
+      ${tstats(ts)}${tstats(ta).replace("<td>", '<td class="gstart">')}</tr>`;
     $("med-" + m.key).textContent = fmt(median(ts));
     if (m.key === "ac") $("max-ac").textContent = fmt(Math.max(...ts));
+    if (m.key !== "si") $("medall-" + m.key).textContent = fmt(median(ta));
   }
   $("summary").innerHTML = h + "</tbody>";
   $("nmatches").textContent = nm;
   const c40 = cases.find(c => c.pattern.includes("isinteger"));
   $("t40").textContent = c40 ? fmt(c40.c.t_first) : "–";
+  $("t40all").textContent = c40 ? fmt(c40.c.t_all) : "–";
 }
 
 // ---- filters
@@ -242,7 +251,7 @@ function cell(r) {
 function table() {
   const f = FILTERS.find(x => x[0] === filter)[2];
   let h = `<thead><tr><th class="n">#</th><th>Group</th><th>Pattern</th><th>Subject (as stored)</th>` +
-    M.map(m => `<th class="n">${esc(m.name)}</th>`).join("") + `<th>First match, µs</th><th>Notes</th></tr></thead><tbody>`;
+    M.map(m => `<th class="n">${esc(m.name)}</th>`).join("") + `<th>First match, µs</th><th>All matches, µs</th><th>Notes</th></tr></thead><tbody>`;
   for (const c of cases.filter(f)) {
     const flags = [disagree(c) ? "some match, some not" : "", countsDiffer(c) ? "counts differ" : ""].filter(Boolean);
     h += `<tr tabindex="0" data-i="${c.i}" class="${c.i === selected ? "sel" : ""}">
@@ -250,6 +259,7 @@ function table() {
       <td class="pat" title="${esc(c.pattern)}">${esc(c.pattern)}</td><td class="sub" title="${esc(c.stored)}">${esc(c.stored)}</td>` +
       M.map(m => `<td class="n">${cell(c[m.key])}</td>`).join("") +
       `<td class="t">${M.map(m => fmt(c[m.key].t_first)).join(" · ")}</td>
+      <td class="t">${M.filter(m => m.key !== "si").map(m => fmt(c[m.key].error_all ? null : c[m.key].t_all)).join(" · ")}</td>
       <td class="flags">${flags.map(x => `<span class="flag">${x}</span>`).join("<br>")}${c.note ? `<span class="muted" style="font-size:.8rem">${flags.length ? "<br>" : ""}${esc(c.note)}</span>` : ""}</td></tr>`;
   }
   $("cases").innerHTML = h + "</tbody>";

@@ -2,10 +2,13 @@
 
 eachm(pat, sub) = CPM._ceachmatch(pat, sub)
 
-# first match or `nothing`
+# first match or `nothing`, by `_cmatch`, which stops at the first match;
+# it must be the first match of `_ceachmatch`
 function matchone(pat, sub)
+    σ = CPM._cmatch(pat, sub)
     σs = eachm(pat, sub)
-    isempty(σs) ? nothing : first(σs)
+    @test isequal(σ, isempty(σs) ? nothing : first(σs))
+    σ
 end
 
 # compare a matched value with an expected one. Symbolic types differ in
