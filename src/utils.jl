@@ -5,27 +5,39 @@
 # if x is a wrapped constant number, unwrap it. Otherwise return x
 # Might need call like
 # AssociativeCommutativePatternMatching.unwrap_const(x::Basic) = SymEngine.unwrap_const(x)
-unwrap_const(x::Any) = _unwrap_const(x)
-
-
-# cases for expression types
-_unwrap_const(x) = x
-_unwrap_const(x::Number) = x
-function _unwrap_const(x::Symbol)
-    x ∈ (:π, :pi) && return MathConstants.pi
-    x ∈ (:ℯ, :e, ) && return MathConstants.ℯ
-    x ∈ (:φ, :golden) && return MathConstants.golden
-    x ∈ (:γ, :eulergamma) && return MathConstants.eulergamma
-    x == :catalan && return MathConstants.catalan
+unwrap_const(x::Any) = x
+function unwrap_const(x::Symbol)
+    if hasproperty(Base.MathConstants, x)
+        return getproperty(Base.MathConstants, x)
+    end
+    x == :twoπ && return 2π
+    x == :fourπ && return      4π
+    x == :halfπ && return      π / 2
+    x == :quartπ && return     π / 4
+    x == :invπ && return       1 / π
+    x == :twoinvπ && return    2 / π
+    x == :fourinvπ && return   4 / π
+    x == :inv2π && return      1 / (2π)
+    x == :inv4π && return      1 / (4π)
+    x == :sqrt2 && return      √2
+    x == :sqrt3 && return      √3
+    x == :sqrtπ && return      √π
+    x == :sqrt2π && return     √2π
+    x == :sqrt4π && return     √4π
+    x == :sqrthalfπ && return  √(π / 2)
+    x == :invsqrt2 && return   1 / √2
+    x == :invsqrtπ && return   1 / √π
+    x == :invsqrt2π && return  1 / √2π
+    x == :loghalf && return    log(1 / 2)
+    x == :logtwo && return     log(2)
+    x == :logten && return     log(10)
+    x == :logπ && return       log(π)
+    x == :log2π && return      log(2π)
+    x == :log4π && return      log(4π)
     return x
 end
-_unwrap_const(x::Expr) = _isnumber(x) ? eval(x) : x
 
-# check if value holds a number
-_isnumber(::Any) = false
-_isnumber(x::Number) = true
-_isnumber(x::Symbol) = x ∈ (:π, :pi, :ℯ, :e, :φ, :golden, :γ, :eulergamma, :catalan)
-_isnumber(x::Expr) = !(_ismatch(x, !_isnumber))
+_unwrap_const(x) = unwrap_const(x)
 
 ## ----- substitution mapping stored in a dictionary -----
 # A substitution is a collection of pairs 𝑋 -> 𝐺
@@ -38,16 +50,17 @@ const MatchDict = Base.ImmutableDict{Symbol, Any}
 
 match_dict() = MatchDict()
 
-function match_dict(kvs::Pair...)
+function match_dict(@nospecialize(kvs::Pair...))::MatchDict
     σ = MatchDict()
     match_dict(σ, kvs...)
 end
 
-function match_dict(σ::MatchDict, kvs::Pair...)
+function match_dict(σ::MatchDict, @nospecialize(kvs::Pair...))::MatchDict
     for (k,v) ∈ kvs
-        v = isa(v,Number) ? _unwrap_const(v) : v
+        v = isa(v,Number) ? unwrap_const(v) : v
         if haskey(σ, k)
-            σ[k] != v && error("repeated key with different value: $k => $v ($(σ[k]))")
+            σk = σ[k]
+            !isequal(σk, v) && error("repeated key with different value: $k => $v ($σk)")
         else
             σ = MatchDict(σ, k, v)
         end
@@ -98,8 +111,25 @@ _is_operation(op) = ex -> iscall(ex) && operation(ex) ∈ (op, Symbol(op))
 # trick -- SymEngine.Basic <: Number
 # compare Number, Expr, Irrational, Symbol
 
-eq_expr(a::Any, b::Any) = isequal(unwrap_const(a), unwrap_const(b))
-eq_expr(a::Expr, b::Expr) = !isnothing(syntactic_match(unwrap_const(a), unwrap_const(b)))
+eq_expr(a::Any, b::Any) = isequal(_unwrap_const(a), _unwrap_const(b))
+eq_expr(a::Expr, b::Expr) = equal_terms(_unwrap_const(a), _unwrap_const(b))
+
+# a symbol in a pattern matches a symbolic variable of the same name
+eq_expr(a::Any, b::Symbol) = isequal(_unwrap_const(a), _unwrap_const(b)) ||
+    (!iscall(a) && !isa(a, Symbol) && Symbol(string(a)) === b)
+
+# compare head and arguments of two terms
+# (not to be confused with `syntactic_match(s, p, σ)` of
+# syntactic_match.jl, which matches a subject to a pattern)
+function equal_terms(a, b)
+    𝑎, 𝑏 = isexpr(a), isexpr(b)
+    𝑎 == 𝑏 || return false
+    !𝑎 && return isequal(a, b)
+    operation(a) ==  operation(b) || return false
+    as, bs = arguments(a), arguments(b)
+    length(as) == length(bs) || return false
+    all(splat(isequal), zip(as, bs))
+end
 
 
 # create a term for a pattern (pterm) or a subject (sterm)
@@ -124,8 +154,11 @@ symtype(::Symbol) = Expr
 symtype(::Expr) = Expr
 symtype(::T) where T = T
 
+# create a term on the subject side
 function sterm(op, args)
-    S = symtype(first(args))
+    # numbers (e.g. 2 in 2x) may not identify the symbolic type
+    i = findfirst(a -> !isa(_unwrap_const(a), Real), args)
+    S = symtype(args[something(i, firstindex(args))])
     sterm(S, op, args)
 end
 
@@ -169,6 +202,31 @@ function _invert_expr(pat)
     else
         return pterm(:^, (pat, -1))
     end
+end
+
+# a subject `u / v` as a product of powers: the factors of `u` (dropping a 1),
+# and for each factor of `v` its inverse, `f^-1`, or `b^(-k)` for a power `b^k`
+_factors(x) = iscall(x) && Symbol(operation(x)) === :* ? arguments(x) : (x,)
+function _invert_data(f)
+    # a number, possibly symbolic (SymbolicUtils keeps sqrt(1)), is inverted as a
+    # number: a term `c^-1` with an integer `c` would raise a DomainError
+    c = _unwrap_const(f)
+    isa(c, Number) && return isa(c, Integer) ? 1 // c : inv(c)
+    if iscall(f) && Symbol(operation(f)) === :^
+        b, k = arguments(f)
+        return sterm(^, (b, _negate(k)))
+    end
+    sterm(^, (f, -1))
+end
+function _data_as_powers(@nospecialize(data))
+    u, v = arguments(data)
+    Any[(f for f in _factors(u) if !_isone(_unwrap_const(f)))..., map(_invert_data, _factors(v))...]
+end
+
+# -k, as a number when k is one, e.g. :(1//2)
+function _negate(k)
+    k′ = _constant_value(k)
+    isa(k′, Number) ? -k′ : sterm(-, (k,))
 end
 
 # --- basic total order, can override for other types
@@ -289,56 +347,64 @@ function varname(x::Expr)
     end
 end
 
-## -- work with guards
-# return true *if* either var has no predicate or
-# predicate(data) is true
-# use like pass_any_guard(var, data) || return ∅
-function pass_any_guard(var, data)
-    !has_predicate(var) && return true
+## -- evaluate a guard
+#
+# A guard is best given as a value -- a function spliced into the pattern,
+# as `@pattern` does, or as with `:(~x::$pred)`. Such a guard is called
+# directly.
+#
+# A guard given by name or as an expression in a quoted pattern
+# (`:(~x::isfoo)`) is looked up in `Main` and `Base`, not in the module
+# which wrote the pattern; use `@pattern` for that. A guard which can not be
+# resolved, or which errors, fails the match.
 
-    pred = get_predicate(var)
-    pred_fn = pred
+_resolve_predicate(pred) = pred
 
-    if pred isa Symbol
-        for M ∈ (@__MODULE__, Main, Base)
-            if isdefined(M, pred)
-                pred_fn = getfield(M, pred)
-                break
-            end
-        end
-    elseif pred isa Expr
-        for M ∈ (@__MODULE__, Main, Base)
-            try
-                pred_fn = Core.eval(M, pred)
-                break
-            catch err
-                # fall through if this expression is not yet resolvable in the current scope
-            end
-        end
+# a name, as used in a quoted pattern or template, or `nothing`
+function _resolve_name(x::Symbol)
+    for M ∈ (Main, Base)
+        isdefined(M, x) && return getfield(M, x)
     end
+    return nothing
+end
 
-    # Avoid re-evaluating user predicates repeatedly when they are already callables.
-    if pred_fn isa Function
-        return try
-            Base.invokelatest(pred_fn, _unwrap_const(data))
-        catch err
-            false
-        end
-    end
+_resolve_predicate(pred::Symbol) = _resolve_name(pred)
 
-    # Fallback for unusual dynamic forms.
-    try
-        return Base.invokelatest(eval(pred), _unwrap_const(data))
+# guards given as expressions (e.g. `!=(-1)`) are evaluated once and cached,
+# keyed by the identity of the expression. A failure is not cached, so a
+# guard defined later will be found.
+const PREDICATE_FN_CACHE = IdDict{Expr, Any}()
+
+function _resolve_predicate(pred::Expr)
+    haskey(PREDICATE_FN_CACHE, pred) && return PREDICATE_FN_CACHE[pred]
+    pred_fn = try
+        Core.eval(Main, pred)
     catch err
-        try
-            return invokelatest(Main.eval(pred), _unwrap_const(data))
-        catch err
-            false
-        end
+        return nothing
+    end
+    PREDICATE_FN_CACHE[pred] = pred_fn
+    return pred_fn
+end
+
+function _evalguard(pred, data)
+    # look up in the latest world, as the guard may be defined after this
+    # code was compiled
+    pred_fn = Base.invokelatest(_resolve_predicate, pred)
+    pred_fn === nothing && return false
+    try
+        Base.invokelatest(pred_fn, _unwrap_const(data)) === true
+    catch err
+        false
     end
 end
 
+# return true *if* either var has no predicate or
+# predicate(data) is true
+# use like pass_any_guard(var, data) || return ∅
+pass_any_guard(var, data) = !has_predicate(var) || _evalguard(get_predicate(var), data)
+
 # Does wildcard have a predicate?
+has_predicate(::Any)::Bool = false
 has_predicate(x::Symbol)::Bool = false
 function has_predicate(x::Expr)::Bool
     if x.args[1] ∈ (:~, :!)

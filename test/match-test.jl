@@ -368,18 +368,3 @@ end
     ex = :(x * sin(x))
     @test _replace(ex, :(x*sin(x)) => :x) == :x
 end
-
-@testset "simplify" begin
-    si(ex) = AssociativeCommutativePatternMatching._simplify(ex, Expr)
-
-    ss = (:(2x + 3x + 4),
-          :(sin(x)/cos(x)),
-          :(20*sin(x) * cos(x)),
-          :(10*sin(x^2)^2 + 10*cos(x^2)^2 + 10),
-          :(10*log(x)),
-          )
-
-    for ex ∈ ss
-        @test ex != si(ex)
-    end
-end

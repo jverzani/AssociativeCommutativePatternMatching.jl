@@ -65,14 +65,15 @@ function match_one_to_one(ss, p, fₐ = nothing, θ = (match_dict(),))
         iscall(s) || return ∅ # p is non constant, s must be a call
 
         p = normalize_pattern(p,s)
-        opₛ, opₚ = operation(s), operation(p)
+        opₛ, ss = normalize_subject(s, p)
+        opₚ = operation(p)
         if is_𝑋(opₚ) # check for variable function head
             σ′ = match_dict(varname(opₚ) => opₛ)
             θ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
         else
             Symbol(opₛ) == opₚ || return ∅ # can't have defslot in p at this level
         end
-        ss, ps = arguments(s), arguments(p)
+        ps = arguments(p)
         fₐ′ = isassociative(opₛ) ? opₛ : nothing
         λ = iscommutative(opₛ) ? match_commutative_sequence : match_sequence
         return λ(ss, ps, fₐ′, θ)
@@ -203,12 +204,12 @@ function _match_matched_variables(ss, ps, σ, fₐ=nothing)
                 # a value fₐ(a,b) bound elsewhere appears as a, b
                 itr = (s,)
                 if isassociative(fₐ) && iscall(s) && Symbol(operation(s)) == Symbol(fₐ) &&
-                    isnothing(findfirst(==(s), ss))
+                    isnothing(findfirst(isequal(s), ss))
                     itr = arguments(s)
                 end
             end
             for sᵢ ∈ itr
-                j = findfirst(==(sᵢ), ss)
+                j = findfirst(isequal(sᵢ), ss) # `==` may not give a Bool
                 isnothing(j) && return nothing
                 ss = _deleteat(ss, j)
             end
@@ -241,7 +242,7 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
     # (basic algorithm, with errors fixed, from claude on depth-first stack approach to compute
     # permutations)
     λ = (inds, ps′, σ, ss) -> begin
-        ss′ = ss[inds]
+        ss′ = [ss[i] for i ∈ inds] # not ss[inds], which some argument types lack
         result = Any[]
         stack = Any[(((), tuple(ss′...), (σ,)))]
         while !isempty(stack)
@@ -267,7 +268,7 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
                             σ′ = match_dict(varname(opₚ) => opₛ)
                             θ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
                         elseif !any(is_defslot, arguments(p))
-                            opₛ = operation(s)
+                            opₛ = first(normalize_subject(s, p))
                             Symbol(opₛ) == opₚ || continue # stop this track
                         end
                     end
@@ -277,7 +278,7 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
             end
 
             if isempty(remaining) # terminate successfully if nothing left in remaining
-                ss′′ = ss[setdiff(eachindex(ss), inds)] # by position, keeps repeats
+                ss′′ = [ss[i] for i ∈ setdiff(eachindex(ss), inds)] # by position, keeps repeats
                 for σ ∈ θ
                     push!(result, (ss′′, ps′′, σ))
                 end
@@ -569,10 +570,19 @@ end
 # | ^(1//2) | sqrt | ^(1//2)
 # | ^(1//3) | cbrt | ^(1//3)
 # | ^(-1)   |  /   | ^(-1)
+# | ^(-1//2)| 1/sqrt | ^(-1//2)
 # | e^      | exp  | e^
 # | exp     | e^...| exp(...)
 # |  /      | ^(-1)| /
 # |  *      |  /   | *
+# the value of a constant, also for an expression holding a number, e.g. :(1//2)
+_constant_value(x) = unwrap_const(x)
+_constant_value(x::Expr) = _isnumber(x) ? eval(x) : x
+_isnumber(::Any) = false
+_isnumber(x::Number) = true
+_isnumber(x::Symbol) = isa(unwrap_const(x), Number)
+_isnumber(x::Expr) = !(_ismatch(x, !_isnumber))
+
 function normalize_pattern(pat, sub)
     iscall(sub) || return pat
     opₛ = Symbol(operation(sub))
@@ -581,41 +591,40 @@ function normalize_pattern(pat, sub)
 
     if (opₛ, opₚ) == (:sqrt, :^)
         u, v = arguments(pat)
-        if eq_expr(v, :(1//2))
+        if isequal(_constant_value(v), 1//2)
             return Expr(:call, :sqrt, u)
         end
     elseif (opₛ, opₚ) == (:cbrt, :^)
         u, v = arguments(pat)
-        if eq_expr(v, :(1//3))
+        if isequal(_constant_value(v), 1//3)
             return Expr(:call, :cbrt, u)
         end
     elseif (opₛ, opₚ) == (:^, :sqrt)
         a, b = arguments(sub)
-        if unwrap_const(b) == 1//2
+        if isequal(_constant_value(b), 1//2)
             v = only(arguments(pat))
-            return Expr(:call, :^, v, Expr(:call, ://, 1,2))
+            return Expr(:call, :^, v, b) # b, not 1//2, compares equal to itself
         end
     elseif (opₛ, opₚ) == (:^, :cbrt)
         a, b = arguments(sub)
-        if unwrap_const(b) == 1//3
+        if isequal(_constant_value(b), 1//3)
             v = only(arguments(pat))
-            return Expr(:call, :^, v, Expr(:call, ://, 1,3))
+            return Expr(:call, :^, v, b) # b, not 1//2, compares equal to itself
         end
     elseif (opₛ, opₚ) == (:^, :/)
         a, b = arguments(sub)
-        b′ = unwrap_const(b)
-        if isa(b′, Real) && b′ < 0 #unwrap_const(b) == -1
-            u, v = arguments(pat)
-            if unwrap_const(u) == 1
-                if is_operation(:^)(v)
-                    w,y = arguments(v)
-                    y′ = unwrap_const(y)
-                    isa(y′, Number) || return pat # can't negate a symbolic exponent
-                    p = Expr(:call, :^, w, -y′)
-                else
-                    p = Expr(:call, :^, v, -1)
-                end
-                return p
+        u, v = arguments(pat)
+        if unwrap_const(u) == 1
+            if is_operation(:^)(v)
+                w,y = arguments(v)
+                y′ = _constant_value(y)
+                isa(y′, Number) || return pat # can't negate a symbolic exponent
+                return Expr(:call, :^, w, -y′)
+            elseif is_operation(:sqrt)(v) && isequal(_constant_value(b), -1//2)
+                # `isequal`, not `<`, as a symbolic exponent may not compare
+                return Expr(:call, :^, only(arguments(v)), b)
+            else
+                return Expr(:call, :^, v, -1)
             end
         end
     elseif (opₛ, opₚ) == (:^, :exp)
@@ -631,7 +640,7 @@ function normalize_pattern(pat, sub)
         end
     elseif (opₛ, opₚ) == (:/, :^)
         u,v = arguments(pat)
-        if eq_expr(v, :(-1))
+        if isequal(_constant_value(v), -1)
             return Expr(:call, :/, 1, u)
         end
     elseif (opₛ, opₚ) == (:*, :/)
@@ -639,6 +648,42 @@ function normalize_pattern(pat, sub)
         return Expr(:call, :*, u, _invert_expr(v))
     end
     return pat
+end
+
+# normalize subject
+# when the pattern is a power, or a product with a power, a subject in another
+# form is matched as one: the operation and arguments matched are
+# |   pat      |   sub     | op, args
+# |------------|-----------|-----------
+# | ^          | sqrt(u)   | ^, (u, 1//2)
+# | ^          | exp(u)    | ^, (ℯ, u)
+# | ^          | 1/u^k     | ^, (u, -k)
+# | ^          | 1/sqrt(u) | ^, (u, -1//2)
+# | ^          | 1/exp(u)  | ^, (ℯ, -u)
+# | ^          | 1/u       | ^, (u, -1)
+# | * with a ^ | u/v       | *, factors of u and the inverted factors of v
+# The arguments are matched directly, so no term is built which a symbolic
+# package might simplify back, e.g. u^(1//2) to sqrt(u).
+function normalize_subject(sub, pat)
+    opₛ, args = operation(sub), arguments(sub)
+    iscall(pat) || return (opₛ, args)
+    opₚ, op = operation(pat), Symbol(opₛ)
+    if opₚ == :^
+        op == :sqrt && return (:^, Any[only(args), 1//2])
+        op == :exp && return (:^, Any[ℯ, only(args)])
+        if op == :/ && _isone(_unwrap_const(first(args)))
+            v = last(args)
+            iscall(v) || return (:^, Any[v, -1])
+            opᵥ = Symbol(operation(v))
+            opᵥ == :^ && return (:^, Any[first(arguments(v)), _negate(last(arguments(v)))])
+            opᵥ == :sqrt && return (:^, Any[only(arguments(v)), -1//2])
+            opᵥ == :exp && return (:^, Any[ℯ, _negate(only(arguments(v)))])
+            return (:^, Any[v, -1])
+        end
+    elseif opₚ == :* && op == :/ && any(is_operation(:^), arguments(pat))
+        return (:*, _data_as_powers(sub))
+    end
+    return (opₛ, args)
 end
 
 # ----- default slot code ------

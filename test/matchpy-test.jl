@@ -249,3 +249,26 @@ end
     @test !isnothing(σ) && σ[:x] == :(a + b)
     @test isnothing(_match(:(f(~x, ~x)), :(f(a - b, b - a))))
 end
+
+@testset "powers written differently" begin
+    # exponents in a subject or pattern may be numeric expressions, e.g. :(1//2)
+    @test _match(:(sqrt(~u)), :(x^(1//2)))[:u] == :x
+    @test _match(:((~u)^(1//2)), :(sqrt(x)))[:u] == :x
+    @test _match(:(cbrt(~u)), :(x^(1//3)))[:u] == :x
+    @test _match(:(1 / ~u), :(x^(-1)))[:u] == :x
+    @test _match(:(1 / sqrt(~u)), :(x^(-1//2)))[:u] == :x
+    # the subject is matched in the form of a power, as with _cmatch
+    σ = _match(:((~u)^(~m)), :(1 / sqrt(x)))
+    @test σ[:u] == :x && σ[:m] == -1//2
+    σ = _match(:((~u)^(~m)), :(1 / x^2))
+    @test σ[:u] == :x && σ[:m] == -2
+    σ = _match(:((~u)^(~m)), :(exp(x)))
+    @test σ[:u] == ℯ && σ[:m] == :x
+    σ = _match(:((~u)^(~m)), :(sqrt(x)))
+    @test σ[:u] == :x && σ[:m] == 1//2
+    σ = _match(:((~u)^(~m) * ~v), :(a / b))
+    @test σ[:u] == :b && σ[:m] == -1 && σ[:v] == :a
+    @test _match(:((~x)^(~n::(!=(-1)))), :(1 / x)) === nothing
+    # a product without a power is not rewritten
+    @test _match(:(~u * ~v), :(a / b)) === nothing
+end
