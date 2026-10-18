@@ -92,3 +92,17 @@ Base.ImmutableDict{Symbol, Any} with 2 entries:
   :m => -1//2
   :u => :x
 ```
+
+### Compiled patterns
+
+Each time it is called, `_ceachmatch` works out from the pattern which parts are slots, segments or default slots, what each guard is, and which forms of a power apply. [`compile_pattern`](@ref) does this once. A compiled pattern may be used in place of the pattern, with the same matches, in the same order, found faster:
+
+```jldoctest matchers
+julia> c = ACPM.compile_pattern(:((~x)^(~x)));
+
+julia> ACPM._cmatch(c, :((x + p)^(x + p)))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x => :(x + p)
+```
+
+A rule made by `@rule` compiles its pattern when it is made, so it is worth compiling a pattern only when matching with it repeatedly outside a rule.

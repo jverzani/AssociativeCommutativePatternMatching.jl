@@ -124,7 +124,7 @@ function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀, once::Bool=fal
 
     # check opᵣ for special cases where
     # powers are represented differently
-    opᵣ, 𝑜𝑝ₛ = operation(rule), Symbol(operation(data))
+    opᵣ, 𝑜𝑝ₛ = operation(rule), _opsym(operation(data))
 
     if opᵣ ∈ (:^, :sqrt, :exp) ||
         (opᵣ, 𝑜𝑝ₛ) ∈ ((:/,:^),
@@ -246,7 +246,7 @@ end
 function only_argument_is_segment(@nospecialize(data), rule, σs, op=nothing)
     # @show :only_argument_is_segment, data, rule
     !iscall(data) && return MatchDict[]
-    opₛ, opᵣ = Symbol(operation(data)), operation(rule)
+    opₛ, opᵣ = _opsym(operation(data)), operation(rule)
     opₛ == opᵣ || return MatchDict[]
 
     # a segment binds to the tuple of arguments, as in has_any_segment
@@ -273,7 +273,7 @@ end
 # e.g. sqrt(x) --> x^(1//2)
 function different_powers(@nospecialize(data), rule, σs::𝑀, once::Bool=false)::𝑀
     # @show :different_powers, data, rule
-    opᵣ, opₛ = operation(rule), Symbol(operation(data))
+    opᵣ, opₛ = operation(rule), _opsym(operation(data))
     arg_data = arguments(data)
     arg_rule = arguments(rule)
     b = first(arg_data)
@@ -319,7 +319,7 @@ function different_powers(@nospecialize(data), rule, σs::𝑀, once::Bool=false
             fad[1] = m
             fad[2] = -1
         elseif (opₛ  === :^) && iscall(b) &&
-            (Symbol(operation(b)) === :/) &&
+            (_opsym(operation(b)) === :/) &&
             _isone(arguments(b)[1])
 
             # if data is of the alternative form (1/...)^(...)
@@ -423,7 +423,7 @@ end
 function neim_rewrite(@nospecialize(data), rule)
     neim_pass = false
     arg_rule, arg_data = arguments(rule), arguments(data)
-    opᵣ, opₛ = operation(rule), Symbol(operation(data))
+    opᵣ, opₛ = operation(rule), _opsym(operation(data))
     if (opᵣ === :*) && opₛ === :/ && any(is_operation(:^), arg_rule)
 
         neim_pass = true

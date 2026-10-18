@@ -379,5 +379,4 @@ The wildcards `~x`, `~!x` and `~~x`, guards written `~x::pred`, and the forms `@
 Some features of SymbolicUtils' rules are not supported:
 
 * a predicate over the whole rule, `@rule lhs => rhs where pred`. For a symbolic subject, the same effect comes from a right-hand side such as `pred ? rhs : nothing`, as a rule returns whatever `rhs` evaluates to;
-* `~` alone on the right-hand side, to return the match;
 * contextual predicates, and the macro `@capture`.

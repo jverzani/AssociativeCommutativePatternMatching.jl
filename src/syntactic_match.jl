@@ -23,7 +23,7 @@ function syntactic_match(s, p, σ = match_dict())
         if is_𝑋(opₚ)
             σ′ = match_dict(σ′, varname(opₚ) => opₛ)
         else
-            Symbol(opₛ) == opₚ || return ϟ
+            _opsym(opₛ) == opₚ || return ϟ
         end
         ss, ps = arguments(s), arguments(p)
         length(ss) == length(ps) || return ϟ

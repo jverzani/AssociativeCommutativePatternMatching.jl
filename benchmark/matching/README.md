@@ -1,11 +1,12 @@
 # Matching comparison
 
-62 patterns, each matched against a SymbolicUtils term by four matchers:
+62 patterns, each matched against a SymbolicUtils term by four matchers, one also with its pattern compiled:
 
 | Key | Matcher | Package |
 |---|---|---|
 | `ac` | `_eachmatch`, associative-commutative (MatchPy) | AssociativeCommutativePatternMatching (this checkout) |
 | `c` | `_ceachmatch`, commutative | AssociativeCommutativePatternMatching |
+| `cc` | `_ceachmatch` with the pattern compiled once by `compile_pattern`, as `@rule` does | AssociativeCommutativePatternMatching |
 | `su` | the matcher of `@rule` | [SymbolicUtils](https://github.com/JuliaSymbolics/SymbolicUtils.jl) |
 | `si` | `check_expr_r` in `src/methods/rule_based/rule2.jl` | [SymbolicIntegration](https://github.com/JuliaSymbolics/SymbolicIntegration.jl) |
 

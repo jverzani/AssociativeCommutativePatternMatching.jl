@@ -3,6 +3,7 @@
 # with four matchers, and writes results/matching.json (read by build.jl):
 #   ac  AssociativeCommutativePatternMatching._eachmatch (all matches, lazily)
 #   c   AssociativeCommutativePatternMatching._ceachmatch (a vector of matches)
+#   cc  the same, with the pattern compiled by `compile_pattern`, as `@rule` does
 #   su  SymbolicUtils @rule; all matches are found by a continuation that
 #       records the bindings and returns `nothing`, so the matcher backtracks
 #   si  SymbolicIntegration's rule2.jl, `check_expr_r`, which returns one match
@@ -49,6 +50,12 @@ ac_first(p, s) = ACPM._match(p, s)
 c_all(p, s) = ACPM._ceachmatch(p, s)
 c_first(p, s) = ACPM._cmatch(p, s)
 
+# the pattern compiled once, as `@rule` does
+const COMPILED = Dict{Any,Any}()
+compiled(p) = get!(() -> ACPM.compile_pattern(p), COMPILED, p)
+cc_all(p, s) = ACPM._ceachmatch(compiled(p), s)
+cc_first(p, s) = ACPM._cmatch(compiled(p), s)
+
 const SU_RULES = Dict{Expr,Any}()
 su_rule(p) = get!(() -> Core.eval(Main, :(SymbolicUtils.@rule $p => true)), SU_RULES, p)
 # as `(r::Rule)(term)` does, zero the meter of commutative backtracking, which
@@ -69,7 +76,8 @@ function si_first(p, s)
 end
 si_all(p, s) = (σ = si_first(p, s); σ === nothing ? Any[] : Any[σ])
 
-const METHODS = [("ac", ac_all, ac_first), ("c", c_all, c_first), ("su", su_all, su_first), ("si", si_all, si_first)]
+const METHODS = [("ac", ac_all, ac_first), ("c", c_all, c_first), ("cc", cc_all, cc_first),
+                 ("su", su_all, su_first), ("si", si_all, si_first)]
 
 # ---- verify a match: put it into the pattern and compare numerically
 struct Splat; vs::Vector{Any}; end
