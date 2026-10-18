@@ -82,3 +82,53 @@ function invert_tests()
         @test binds(matchone(:(~u / (3//2)), S(:(x * (2//3)))), :u => S(:x))
     end
 end
+
+# The associative-commutative matcher matches powers written differently as
+# the commutative matcher does: when `_cmatch` matches, its match is among
+# those of `_eachmatch` (up to the standard order).
+function ac_powers_tests()
+    cases = [
+        (:((~u)^(~m)), :(1 / sqrt(x))),
+        (:((~u)^(~m)), :(1 / x)),
+        (:((~u)^(~m)), :(1 / x^2)),
+        (:((~u)^(~m)), :(1 / exp(x))),
+        (:((~u)^(~m)), :(exp(x))),
+        (:((~u)^(~m)), :(sqrt(x))),
+        (:(ℯ^(~n)), :(exp(x))),
+        (:(sqrt(~u)), :(x^(1//2))),
+        (:(1 / sqrt(~u)), :((a + b)^(-1//2))),
+        (:((~u)^(~m) * ~v), :(a / b)),
+        (:((~u)^(~m) * ~v), :(a / b^2)),
+        (:((~u)^(~!p) / ~x), :(1 / (x * log(x)))),
+        (:((~u)^(~m) * (~v)^(~n) * (~w)^(~!p)), :((x + 3) / ((x - 1) * (x + 1)^2))),
+        (:((~u)^(~m) * ~c), :(1 / (2 * (x + 1)))),
+    ]
+    _std(x) = x isa Expr ? CPM._canonical(x) : x
+    agree(σ, σ′) = issetequal(keys(σ), keys(σ′)) &&
+        all(k -> same(_std(σ[k]), _std(σ′[k])), keys(σ))
+    @testset "powers written differently, _match ($(B.name))" for B ∈ BACKENDS
+        for (pat, sub) ∈ cases
+            S = B.build(sub)
+            σc = CPM._cmatch(pat, S)
+            σc === nothing && continue # e.g. SimpleExpressions stores 1/(2x + 2)
+            @test any(σ -> agree(σ, σc), CPM._eachmatch(pat, S))
+        end
+        # a guard is checked on the exponent of the rewritten subject
+        @test CPM._match(:((~x)^(~n::(!=(-1)))), B.build(:(1 / x))) === nothing
+    end
+end
+
+# The associative-commutative matcher on symbolic subjects: arguments are
+# compared with `isequal`, as `==` may not give a Bool, and are picked out
+# without indexing by a vector, which SymbolicUtils' arguments do not allow.
+function ac_symbolic_tests()
+    @testset "_match on terms ($(B.name))" for B ∈ BACKENDS
+        S = B.build
+        @test binds(CPM._match(:(sin(~x) * cos(~x)), S(:(sin(t) * cos(t)))), :x => S(:t))
+        @test binds(CPM._match(:(~x * sin(~x)), S(:(x * sin(x)))), :x => S(:x))
+        @test binds(CPM._match(:(sin(~x)^2 + cos(~x)^2), S(:(sin(t)^2 + cos(t)^2))), :x => S(:t))
+        @test CPM._match(:(sin(~x) + cos(~y)), S(:(cos(a) + sin(b)))) !== nothing
+        @test length(collect(CPM._eachmatch(:((~x)^2 + (~y)^2), S(:(a^2 + b^2))))) == 2
+        @test CPM._match(:(~x * (~!a + ~!b * ~x)^(~!m)), S(:(x * (2 + 3x)^4))) !== nothing
+    end
+end

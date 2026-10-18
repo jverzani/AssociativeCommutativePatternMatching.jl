@@ -204,6 +204,31 @@ function _invert_expr(pat)
     end
 end
 
+# a subject `u / v` as a product of powers: the factors of `u` (dropping a 1),
+# and for each factor of `v` its inverse, `f^-1`, or `b^(-k)` for a power `b^k`
+_factors(x) = iscall(x) && Symbol(operation(x)) === :* ? arguments(x) : (x,)
+function _invert_data(f)
+    # a number, possibly symbolic (SymbolicUtils keeps sqrt(1)), is inverted as a
+    # number: a term `c^-1` with an integer `c` would raise a DomainError
+    c = _unwrap_const(f)
+    isa(c, Number) && return isa(c, Integer) ? 1 // c : inv(c)
+    if iscall(f) && Symbol(operation(f)) === :^
+        b, k = arguments(f)
+        return sterm(^, (b, _negate(k)))
+    end
+    sterm(^, (f, -1))
+end
+function _data_as_powers(@nospecialize(data))
+    u, v = arguments(data)
+    Any[(f for f in _factors(u) if !_isone(_unwrap_const(f)))..., map(_invert_data, _factors(v))...]
+end
+
+# -k, as a number when k is one, e.g. :(1//2)
+function _negate(k)
+    k′ = _constant_value(k)
+    isa(k′, Number) ? -k′ : sterm(-, (k,))
+end
+
 # --- basic total order, can override for other types
 <ₑ(x::Symbol, y::Symbol) = x < y
 <ₑ(x::Any, y::Any) = <ₑ(Symbol(x), Symbol(y))

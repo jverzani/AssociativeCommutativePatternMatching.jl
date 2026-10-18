@@ -8,7 +8,7 @@ end
 
 # The two matchers
 
-The two matchers share the pattern language, guards, rules and rewriting described in [AssociativeCommutativePatternMatching.jl](@ref). This page describes what is particular to each.
+The two matchers share the pattern language, guards, rules and rewriting described in [AssociativeCommutativePatternMatching.jl](@ref). This page describes what is particular to each. In short though the main difference is with segment variables where the associative/commutative matcher (`_eachmatch`) takes longer but is thorough, whereas `_ceachmatch` is content with finding a quicker match.
 
 ## The associative-commutative matcher
 
@@ -31,6 +31,9 @@ julia> ACPM._eachmatch(:(f(~~x, ~~y)), :(f(a, b, c))) |> collect
  Base.ImmutableDict(:y => Any[:b, :c], :x => Any[:a])
  Base.ImmutableDict(:y => Any[:a, :b, :c], :x => Any[])
 ```
+
+Associativity and commutativity of an operation can be specified with the unexport `isassociative` and `iscommutative` methods.
+
 
 ### Standard order
 
@@ -81,4 +84,11 @@ Base.ImmutableDict{Symbol, Any} with 3 entries:
   :u => :b
 ```
 
-The associative-commutative matcher handles fewer of these, matching `sqrt(~u)` against `x^(1//2)`, say, but not `(~u)^(~m)` against `1 / sqrt(x)`.
+The associative-commutative matcher matches these in the same way:
+
+```jldoctest matchers
+julia> ACPM._match(:((~u)^(~m)), :(1 / sqrt(x)))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :m => -1//2
+  :u => :x
+```

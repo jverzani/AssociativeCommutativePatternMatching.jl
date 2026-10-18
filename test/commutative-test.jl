@@ -18,6 +18,8 @@ include("commutative/rule_tests.jl")
     end
     backend_tests()
     invert_tests()
+    ac_powers_tests()
+    ac_symbolic_tests()
     guard_tests()
     rule_tests()
     acrule_tests()
