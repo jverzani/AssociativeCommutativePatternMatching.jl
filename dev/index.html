@@ -1,39 +1,485 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>AssociativeCommutativePatternMatching.jl · AssociativeCommutativePatternMatching Documentation</title><meta name="title" content="AssociativeCommutativePatternMatching.jl · AssociativeCommutativePatternMatching Documentation"/><meta property="og:title" content="AssociativeCommutativePatternMatching.jl · AssociativeCommutativePatternMatching Documentation"/><meta property="twitter:title" content="AssociativeCommutativePatternMatching.jl · AssociativeCommutativePatternMatching Documentation"/><meta name="description" content="Documentation for AssociativeCommutativePatternMatching Documentation."/><meta property="og:description" content="Documentation for AssociativeCommutativePatternMatching Documentation."/><meta property="twitter:description" content="Documentation for AssociativeCommutativePatternMatching Documentation."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>AssociativeCommutativePatternMatching Documentation</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>AssociativeCommutativePatternMatching.jl</a><ul class="internal"><li><a class="tocitem" href="#Interface"><span>Interface</span></a></li><li><a class="tocitem" href="#Wildcards"><span>Wildcards</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>AssociativeCommutativePatternMatching.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>AssociativeCommutativePatternMatching.jl</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="AssociativeCommutativePatternMatching.jl"><a class="docs-heading-anchor" href="#AssociativeCommutativePatternMatching.jl">AssociativeCommutativePatternMatching.jl</a><a id="AssociativeCommutativePatternMatching.jl-1"></a><a class="docs-heading-anchor-permalink" href="#AssociativeCommutativePatternMatching.jl" title="Permalink"></a></h1><p>This package provides an implementation of the algorithm of <a href="https://arxiv.org/abs/1705.00907">Non-linear Associative-Commutative Many-to-One Pattern Matching with Sequence Variables</a> by Manuel Krebber through Chapter 3 (only the one-to-one matching has been implemented here).</p><p>This implementation only depends on the lightweight <code>TermInterface</code> and <code>Combinatorics</code> packages.</p><p>This algorithm finds all matches of a pattern employing wildcards against a subject. More formally, a substitution, s, is a key/value structure mapping the wildcards in a pattern against terms in the subject with the expected property that <code>s(pat) = sub</code>, where <code>s(pat)</code> rewrites the pattern by substituting in the matched values.</p><p>Patterns are specified with Julia expressions. Subjects can be expressions or perhaps other symbolic representations that satisfy the <code>TermInterface</code> specification.</p><h2 id="Interface"><a class="docs-heading-anchor" href="#Interface">Interface</a><a id="Interface-1"></a><a class="docs-heading-anchor-permalink" href="#Interface" title="Permalink"></a></h2><p>The primary method is <code>_eachmatch(pattern, subject)</code> which returns an iterator of substitutions, typically in the form of an unrealized generator.</p><p>The <code>AssociativeCommutativePatternMatching._match(pattern, subject)</code> method chooses the first of the possible substitutions given by <code>_eachmatch</code>, returning <code>nothing</code> if there are no matches.</p><p>The <code>AssociativeCommutativePatternMatching._rewrite(symtype, σ, rhs)</code> method replaces wildcards in the <code>rhs</code> template with values in the substitution, <code>σ</code>.</p><p>The <code>AssociativeCommutativePatternMatching._replace(expr, pat =&gt; rhs, ...)</code> method walks (post-order traversal) through an expression, and can be used to replace parts of an expression with other parts.</p><p>Nothing is exported from this package; all methods must be qualified. The methods <code>_eachmatch</code> and <code>_match</code> are intended to be extended to a specific symbolic type, as in <code>Base.eachmatch(pat::SymEngine.Basic, sub) = AssociativeCommutativePatternMatching._eachmatch(pat, sub)</code>. The methods <code>_rewrite</code> and <code>_replace</code> can have a symbolic type (like <code>SymEngine.Basic</code>) passed as the leading variable so that the <code>TermInterface.maketerm</code> method returns the appropriate type of object. As such, these might have methods defined such as <code>rewrite(ex::Basic, lr::Pair) = AssociativeCommutativePatternMatching._rewrite(SymEngine.Basic, ex, lr)</code>.</p><h3 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h3><p>&quot;Each&quot; match</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; import AssociativeCommutativePatternMatching as ACPM</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; pat, sub = :(~x + ~y), :(a + b)</code><code class="nohighlight hljs ansi" style="display:block;">(:(~x + ~y), :(a + b))</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(pat, sub) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">2-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:y =&gt; :a, :x =&gt; :b)
- Base.ImmutableDict(:y =&gt; :b, :x =&gt; :a)</code></pre><p>Single match:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._match(pat, sub)</code><code class="nohighlight hljs ansi" style="display:block;">Base.ImmutableDict{Symbol, Any} with 2 entries:
-  :y =&gt; :a
-  :x =&gt; :b</code></pre><p>Rewrite:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; pat, sub = :(~x*tanh(exp(~x))), :(a^2 * tanh(exp(a^2)))</code><code class="nohighlight hljs ansi" style="display:block;">(:(~x * tanh(exp(~x))), :(a ^ 2 * tanh(exp(a ^ 2))))</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; σ = ACPM._match(pat, sub)</code><code class="nohighlight hljs ansi" style="display:block;">Base.ImmutableDict{Symbol, Any} with 1 entry:
-  :x =&gt; :(a ^ 2)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._rewrite(Expr, σ, pat)</code><code class="nohighlight hljs ansi" style="display:block;">:(a ^ 2 * tanh(exp(a ^ 2)))</code></pre><p>(It should be an invariant that substituting the identified match <code>σ</code> into <code>pat</code> (with <code>_rewrite</code>) returns <code>sub</code>, when the wild cards are slot variables.)</p><p>Replace:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._replace(:(cos(2x)^2 + sin(2x)^2), :(sin(~x)^2 + cos(~x)^2) =&gt; 1)</code><code class="nohighlight hljs ansi" style="display:block;">1</code></pre><p>Simplify:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._simplify(:(cos(2x)^2 + sin(2x)^2))</code><code class="nohighlight hljs ansi" style="display:block;">:(1 + 0)</code></pre><p>The <code>_simplify</code> function builds on the above to perform some common simplifications.</p><h2 id="Wildcards"><a class="docs-heading-anchor" href="#Wildcards">Wildcards</a><a id="Wildcards-1"></a><a class="docs-heading-anchor-permalink" href="#Wildcards" title="Permalink"></a></h2><p>Patterns are specified with wildcards of which there is a variety. We follow the specification of <code>SymbolicUtils</code>  (also implemented in <code>SymbolicIntegration.jl</code>, of which its <code>rule2</code> functionality was mined here for insight):</p><ul><li><p>A &quot;slot variable&quot;, specified as <code>:(~x)</code>, matches one argument of an enclosing operation. For the AssociativeCommutativePatternMatching algorithm, an associative function may have a slot variable match one or more arguments.</p></li><li><p>A &quot;default slot variable&quot;, specified as <code>:(~!x)</code>, matches 0 or 1 arguments. If there are 0 matches a default value is used (for an operation of <code>+</code> this is <code>0</code>, for <code>*</code> this is <code>1</code>, and for an exponent, also <code>1</code>).</p></li><li><p>A &quot;segment variable&quot;, specified <code>:(~~x)</code>, matches 0, 1, or more of the arguments. The match is returned as a collection of matches. (This is a &quot;star&quot; variable in AssociativeCommutativePatternMatching.)</p></li><li><p>A &quot;plus variable&quot;, specified as <code>:(~~~x)</code>, matches 1 or more of the arguments, similar to a segment variable.</p></li><li><p>Wildcards may have predicates or <em>guards</em> attached to them through the notation <code>:(~x::predicate)</code>. A match only occurs when the accompanying predicate is <code>true</code> for the proposed value.</p></li><li><p>A function head can be matched with a slot variable. That is, the pattern <code>:((~F)(~x))</code> will match <code>:(sin(x))</code> with <code>:F =&gt; :sin</code> and <code>:x =&gt; x</code></p></li></ul><h3 id="Examples-2"><a class="docs-heading-anchor" href="#Examples-2">Examples</a><a class="docs-heading-anchor-permalink" href="#Examples-2" title="Permalink"></a></h3><ul><li>Use of default slots:</li></ul><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; r = :(~!a * sin(~x)^2 + ~!a * cos(~x)^2) =&gt; :(~!a)</code><code class="nohighlight hljs ansi" style="display:block;">:(~(!a) * sin(~x) ^ 2 + ~(!a) * cos(~x) ^ 2) =&gt; :(~(!a))</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._replace(:(2cos(2x)^2 + 2sin(2x)^2), r)</code><code class="nohighlight hljs ansi" style="display:block;">2</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(~!a * sin(~!b *~x + ~!c)^(~!m)), :(sin(2x))) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">2-element Vector{Any}:
- Base.ImmutableDict{Symbol, Any}(:b =&gt; 2, :x =&gt; :x, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)
- Base.ImmutableDict{Symbol, Any}(:b =&gt; :x, :x =&gt; 2, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)</code></pre><ul><li>Use of a predicate function to filter matches:</li></ul><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(~!a * sin(~!b *~x::(!Base.Fix2(isa, Number)) + ~!c)^(~!m)), :(sin(2x))) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">1-element Vector{Any}:
- Base.ImmutableDict{Symbol, Any}(:x =&gt; :x, :b =&gt; 2, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)</code></pre><p>(There are scoping issues with predicates to iron out, due to the use of <code>eval</code>.)</p><ul><li>Use of a segment variable:</li></ul><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(~x + ~~y), :(a + b)) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">3-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:x =&gt; :a, :y =&gt; Any[:b])
- Base.ImmutableDict(:x =&gt; :b, :y =&gt; Any[:a])
- Base.ImmutableDict(:x =&gt; :(a + b), :y =&gt; Any[])</code></pre><p>Notice that <code>+</code> is associative, so the slot variable <code>~x</code> may match one or more arguments. In the case there is more than one, the function is called on them. This is why the first match has <code>:x =&gt; :(a+b)</code>. A match for a segment should always return a container.</p><ul><li>Plus variables must have aleast one match:</li></ul><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(~x + ~~~y), :(a + b)) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">2-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:y =&gt; Any[:a], :x =&gt; :b)
- Base.ImmutableDict(:y =&gt; Any[:b], :x =&gt; :a)</code></pre><p>This same result can also be achieved with an appropriate predicate:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(~x + ~~y::(!isempty)), :(a + b)) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">2-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:x =&gt; :a, :y =&gt; Any[:b])
- Base.ImmutableDict(:x =&gt; :b, :y =&gt; Any[:a])</code></pre><p>For segment variables, AssociativeCommutativePatternMatching will try to identify all possibilities. Further, AssociativeCommutativePatternMatching has checks for <em>associativity</em> and <em>commutativity</em> of the operation and will call the operation on the identified associative matches.</p><p>This can lead to a combinatorially large number of matches:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(~x + ~~y), :(a + b + c)) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">7-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:x =&gt; :a, :y =&gt; Any[:b, :c])
- Base.ImmutableDict(:x =&gt; :b, :y =&gt; Any[:a, :c])
- Base.ImmutableDict(:x =&gt; :(a + b), :y =&gt; Any[:c])
- Base.ImmutableDict(:x =&gt; :c, :y =&gt; Any[:a, :b])
- Base.ImmutableDict(:x =&gt; :(a + c), :y =&gt; Any[:b])
- Base.ImmutableDict(:x =&gt; :(b + c), :y =&gt; Any[:a])
- Base.ImmutableDict(:x =&gt; :(a + b + c), :y =&gt; Any[])</code></pre><p>The assumption of associativity can lead to many more matches. In this example, the first match, which uses <code>+</code> instead of <code>f</code>, has twice the number of matches, as <code>f</code> which is not assumed associative or commutative.</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(~~x + ~~y), :(a + b + c)) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">8-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:x =&gt; Any[], :y =&gt; Any[:a, :b, :c])
- Base.ImmutableDict(:x =&gt; Any[:a], :y =&gt; Any[:b, :c])
- Base.ImmutableDict(:x =&gt; Any[:b], :y =&gt; Any[:a, :c])
- Base.ImmutableDict(:x =&gt; Any[:a, :b], :y =&gt; Any[:c])
- Base.ImmutableDict(:x =&gt; Any[:c], :y =&gt; Any[:a, :b])
- Base.ImmutableDict(:x =&gt; Any[:a, :c], :y =&gt; Any[:b])
- Base.ImmutableDict(:x =&gt; Any[:b, :c], :y =&gt; Any[:a])
- Base.ImmutableDict(:x =&gt; Any[:a, :b, :c], :y =&gt; Any[])</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(f(~~x, ~~y)), :(f(a,b,c))) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">4-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:y =&gt; Any[], :x =&gt; Any[:a, :b, :c])
- Base.ImmutableDict(:y =&gt; Any[:c], :x =&gt; Any[:a, :b])
- Base.ImmutableDict(:y =&gt; Any[:b, :c], :x =&gt; Any[:a])
- Base.ImmutableDict(:y =&gt; Any[:a, :b, :c], :x =&gt; Any[])</code></pre><p>That <code>+</code> is commutative, allows a segment variable to use a standard order for a match, which matches the order of no assumption on commutivity.</p><p>Commutivity and associativity are checked by the internal functions <code>iscommutative</code> and <code>isassociative</code> which are passed the operation of the subject (not the pattern, though in these examples the distinction is not important). Unless overridden, any of <code>+</code>, <code>:+</code>, <code>*</code>, <code>:*</code> are assumed both associative and commutative.</p><p>We can see the difference here:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM.iscommutative(x::Symbol) = x ∈ (:(+), :(*), :fₘ)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(fₘ(~x, ~y)), :(fₘ(a,b))) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">2-element Vector{Base.ImmutableDict{Symbol, Any}}:
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AssociativeCommutativePatternMatching.jl — AssociativeCommutativePatternMatching Documentation</title>
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=a953330e">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap">
+  <meta name="title" content="AssociativeCommutativePatternMatching.jl — AssociativeCommutativePatternMatching Documentation">
+  <meta property="og:title" content="AssociativeCommutativePatternMatching.jl — AssociativeCommutativePatternMatching Documentation">
+  <meta property="twitter:title" content="AssociativeCommutativePatternMatching.jl — AssociativeCommutativePatternMatching Documentation">
+  <meta name="description" content="Documentation for AssociativeCommutativePatternMatching Documentation.">
+  <meta property="og:description" content="Documentation for AssociativeCommutativePatternMatching Documentation.">
+  <meta property="twitter:description" content="Documentation for AssociativeCommutativePatternMatching Documentation.">
+  <meta property="og:url" content="https://jverzani.github.io/AssociativeCommutativePatternMatching.jl/">
+  <meta property="twitter:url" content="https://jverzani.github.io/AssociativeCommutativePatternMatching.jl/">
+  <link rel="canonical" href="https://jverzani.github.io/AssociativeCommutativePatternMatching.jl/">
+  <script>
+    (function(){
+      document.documentElement.classList.add('no-transition');
+      var t=localStorage.getItem('md-theme');if(t)document.documentElement.setAttribute('data-theme',t);
+      window.addEventListener('load',function(){setTimeout(function(){document.documentElement.classList.remove('no-transition');},50);});
+    })()
+  </script>
+</head>
+<body data-warn-outdated>
+  <header class="md-navbar">
+    <button id="md-hamburger" class="md-icon-btn md-hamburger" aria-label="Toggle navigation" aria-expanded="false"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+    <span class="md-navbar-title">AssociativeCommutativePatternMatching Documentation</span>
+    <span class="md-navbar-spacer"></span>
+    <button id="md-search-btn" class="md-search-bar" aria-label="Search documentation" aria-expanded="false">
+      <svg class="md-icon md-search-bar-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="md-search-bar-label">Search docs</span>
+      <kbd class="md-search-bar-kbd">Ctrl K</kbd>
+    </button>
+    <div id="md-version" class="md-version" hidden>
+      <button id="md-version-btn" class="md-version-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select documentation version">
+        <span id="md-version-current" class="md-version-current"></span>
+        <svg class="md-icon md-version-caret" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <ul id="md-version-menu" class="md-version-menu" role="listbox" hidden></ul>
+    </div>
+    <button id="md-theme-toggle" class="md-icon-btn" title="Toggle dark mode" aria-label="Toggle dark mode"><svg class="md-icon md-icon-light" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 000-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/></svg><svg class="md-icon md-icon-dark" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></button>
+  </header>
+  <div class="md-layout">
+    <nav class="md-sidebar">
+      <a href="./" class="md-nav-active">Home</a>
+      <a href="./matchers/">The two matchers</a>
+      <a href="./reference/">Reference</a>
+    </nav>
+    <main class="md-content">
+      <article class="md-article">
+      <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
+<h1 id="AssociativeCommutativePatternMatching.jl" class="md-heading">AssociativeCommutativePatternMatching.jl<a href="#AssociativeCommutativePatternMatching.jl" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
+<p>This package matches <em>patterns</em>, expressions with wildcards such as <code class="md-code-inline">~x</code>, against <em>subjects</em>. A subject may be a Julia <code class="md-code-inline">Expr</code> or a term of a symbolic package implementing <a href="https://github.com/JuliaSymbolics/TermInterface.jl">TermInterface</a>, such as SymEngine, SymbolicUtils or SimpleExpressions. The package depends only on the lightweight <code class="md-code-inline">TermInterface</code> and <code class="md-code-inline">Combinatorics</code> packages.</p>
+<p>A match, or substitution, <code class="md-code-inline">σ</code> maps the names of the wildcards to parts of the subject, so that substituting <code class="md-code-inline">σ</code> into the pattern gives back the subject.</p>
+<p>There are two matchers, which share the pattern language, the rules, and the rewriting described on this page:</p>
+<div class="md-table-wrap">
+<table class="md-table">
+<thead>
+<tr>
+<th style="text-align:left"></th>
+<th style="text-align:left"><code class="md-code-inline">_eachmatch</code>, <code class="md-code-inline">_match</code></th>
+<th style="text-align:left"><code class="md-code-inline">_ceachmatch</code>, <code class="md-code-inline">_cmatch</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">+</code> and <code class="md-code-inline">*</code> are</td>
+<td style="text-align:left">associative and commutative</td>
+<td style="text-align:left">commutative</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~x + ~y</code> and <code class="md-code-inline">a + b + c</code></td>
+<td style="text-align:left">match, e.g. <code class="md-code-inline">x =&gt; a + b</code>, <code class="md-code-inline">y =&gt; c</code></td>
+<td style="text-align:left">do not match</td>
+</tr>
+<tr>
+<td style="text-align:left">all the matches are</td>
+<td style="text-align:left">an iterator (a lazy generator)</td>
+<td style="text-align:left">a vector</td>
+</tr>
+<tr>
+<td style="text-align:left">a segment <code class="md-code-inline">~~x</code> binds</td>
+<td style="text-align:left">a vector</td>
+<td style="text-align:left">a tuple</td>
+</tr>
+<tr>
+<td style="text-align:left">rules</td>
+<td style="text-align:left"><a href="./reference/#AssociativeCommutativePatternMatching.@acrule-Tuple{Any}"><code class="md-code-inline">@acrule</code></a></td>
+<td style="text-align:left"><a href="./reference/#AssociativeCommutativePatternMatching.@rule-Tuple{Any}"><code class="md-code-inline">@rule</code></a></td>
+</tr>
+<tr>
+<td style="text-align:left">algorithm</td>
+<td style="text-align:left">Krebber&#39;s <a href="https://arxiv.org/abs/1705.00907">associative-commutative matching</a></td>
+<td style="text-align:left">that of <a href="https://github.com/JuliaSymbolics/SymbolicIntegration.jl">SymbolicIntegration</a>&#39;s rules</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>What is particular to each is described in <a href="./matchers/#The-two-matchers">The two matchers</a>.</p>
+<p>Nothing is exported, as SymbolicUtils has macros of the same names, so qualify the functions, and import the macros you use:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">import AssociativeCommutativePatternMatching as ACPM
+using AssociativeCommutativePatternMatching: @pattern, @rule, @acrule</code></pre>
+</div>
+<h2 id="Matching" class="md-heading">Matching<a href="#Matching" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p><code class="md-code-inline">_match(pattern, subject)</code> returns the first match, or <code class="md-code-inline">nothing</code> if there is none; <code class="md-code-inline">_eachmatch(pattern, subject)</code> returns all of them. Likewise <code class="md-code-inline">_cmatch</code> and <code class="md-code-inline">_ceachmatch</code>. A match is a <code class="md-code-inline">Base.ImmutableDict</code> from the names of the wildcards to their values.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._match(:(sin(~x)), :(sin(a + b)))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; :(a + b)
+
+julia&gt; ACPM._cmatch(:(sin(~x)), :(sin(a + b)))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; :(a + b)
+
+julia&gt; ACPM._cmatch(:(sin(~x)), :(cos(a))) === nothing
+true</code></pre>
+</div>
+<p>As <code class="md-code-inline">+</code> and <code class="md-code-inline">*</code> are commutative, the arguments of a sum or a product may match in any order:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._ceachmatch(:(~x + ~y), :(a + b))
+2-element Vector{Base.ImmutableDict{Symbol, Any}}:
  Base.ImmutableDict(:y =&gt; :b, :x =&gt; :a)
- Base.ImmutableDict(:y =&gt; :a, :x =&gt; :b)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; ACPM._eachmatch(:(f(~x, ~y)), :(f(a,b))) |&gt; collect</code><code class="nohighlight hljs ansi" style="display:block;">1-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:y =&gt; :b, :x =&gt; :a)</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 13 October 2026 23:10">Tuesday 13 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ Base.ImmutableDict(:y =&gt; :a, :x =&gt; :b)
+
+julia&gt; ACPM._eachmatch(:(~x + ~y), :(a + b)) |&gt; collect
+2-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:y =&gt; :a, :x =&gt; :b)
+ Base.ImmutableDict(:y =&gt; :b, :x =&gt; :a)</code></pre>
+</div>
+<p>With associativity, <code class="md-code-inline">a + b + c</code> may also be grouped as <code class="md-code-inline">(a + b) + c</code>, so <code class="md-code-inline">~x + ~y</code> matches it, in six ways; without, there are three terms for two slots, and no match:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._eachmatch(:(~x + ~y), :(a + b + c)) |&gt; collect
+6-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:y =&gt; :a, :x =&gt; :(b + c))
+ Base.ImmutableDict(:y =&gt; :b, :x =&gt; :(a + c))
+ Base.ImmutableDict(:y =&gt; :(a + b), :x =&gt; :c)
+ Base.ImmutableDict(:y =&gt; :c, :x =&gt; :(a + b))
+ Base.ImmutableDict(:y =&gt; :(a + c), :x =&gt; :b)
+ Base.ImmutableDict(:y =&gt; :(b + c), :x =&gt; :a)
+
+julia&gt; isempty(ACPM._ceachmatch(:(~x + ~y), :(a + b + c)))
+true</code></pre>
+</div>
+<p>A symbolic subject is matched in the same way:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; using SymEngine
+
+julia&gt; @vars x y;
+
+julia&gt; ACPM._cmatch(:(sin(~x)), sin(x + y))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; x + y</code></pre>
+</div>
+<p>A symbolic package may store a number as a symbolic term. So that a number in a pattern equals one in the subject, extend <code class="md-code-inline">unwrap_const</code> to return the Julia number, e.g. <code class="md-code-inline">ACPM.unwrap_const(x::SymbolicUtils.BasicSymbolic) = SymbolicUtils.unwrap_const(x)</code>.</p>
+<h2 id="Wildcards" class="md-heading">Wildcards<a href="#Wildcards" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<div class="md-table-wrap">
+<table class="md-table">
+<thead>
+<tr>
+<th style="text-align:left">wildcard</th>
+<th style="text-align:left">matches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~x</code></td>
+<td style="text-align:left">one argument (a <em>slot</em>)</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~!x</code></td>
+<td style="text-align:left">one argument, or a default value when there is none</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~~x</code></td>
+<td style="text-align:left">zero or more arguments (a <em>segment</em>)</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~~~x</code></td>
+<td style="text-align:left">one or more arguments</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">(~F)(~x)</code></td>
+<td style="text-align:left">the operation of a call, as well as its arguments</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A pattern can have only one wildcard of a given name, so <code class="md-code-inline">~x + ~~x</code> is not allowed. A name may be repeated, though, in which case each occurrence must match the same value. Anything else in a pattern, such as a function name or a number, must appear in the subject as written.</p>
+<h3 id="Slots" class="md-heading">Slots<a href="#Slots" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>The slot <code class="md-code-inline">~x</code> matches a single argument, which may itself be an expression:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._cmatch(:(~x + ~y), :(a + sin(b)))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :y =&gt; :(sin(b))
+  :x =&gt; :a
+
+julia&gt; ACPM._cmatch(:(~x + ~x), :(a + a))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; :a
+
+julia&gt; ACPM._cmatch(:(~x + ~x), :(a + b)) === nothing
+true</code></pre>
+</div>
+<p>With <code class="md-code-inline">_match</code>, a slot in an associative operation may match several arguments, combined with the operation, as <code class="md-code-inline">:x =&gt; :(a + b)</code> above.</p>
+<h3 id="Default-slots" class="md-heading">Default slots<a href="#Default-slots" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>The default slot <code class="md-code-inline">~!x</code> matches as <code class="md-code-inline">~x</code> does, but when there is no argument to match it binds a default value: <code class="md-code-inline">0</code> within a sum, and <code class="md-code-inline">1</code> within a product, or as an exponent or a denominator.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._cmatch(:(~x + ~!y), :a)
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :y =&gt; 0
+  :x =&gt; :a
+
+julia&gt; ACPM._match(:((~x)^(~!n)), :a)
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :x =&gt; :a
+  :n =&gt; 1
+
+julia&gt; ACPM._eachmatch(:(~!a * sin(~!b * ~x + ~!c)^(~!m)), :(sin(2x))) |&gt; collect
+2-element Vector{Any}:
+ Base.ImmutableDict{Symbol, Any}(:b =&gt; 2, :x =&gt; :x, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)
+ Base.ImmutableDict{Symbol, Any}(:b =&gt; :x, :x =&gt; 2, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)</code></pre>
+</div>
+<p>(As <code class="md-code-inline">2x</code> is a commutative product, <code class="md-code-inline">~!b * ~x</code> matches it both ways.)</p>
+<h3 id="Segments" class="md-heading">Segments<a href="#Segments" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>The segment <code class="md-code-inline">~~x</code> matches any number of arguments, including none; <code class="md-code-inline">~~~x</code> must match at least one. <code class="md-code-inline">_match</code> binds the arguments as a vector, <code class="md-code-inline">_cmatch</code> as a tuple:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._match(:(~x + ~~y), :(a + b + c))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :x =&gt; :a
+  :y =&gt; Any[:b, :c]
+
+julia&gt; ACPM._ceachmatch(:(~x + ~~~y), :(a + b + c))
+3-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:y =&gt; (:b, :c), :x =&gt; :a)
+ Base.ImmutableDict(:y =&gt; (:a, :c), :x =&gt; :b)
+ Base.ImmutableDict(:y =&gt; (:a, :b), :x =&gt; :c)</code></pre>
+</div>
+<p>In an operation that is not commutative, a segment matches a run of consecutive arguments:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._cmatch(:(f(~x, ~~y)), :(f(a)))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :y =&gt; ()
+  :x =&gt; :a
+
+julia&gt; ACPM._cmatch(:(f(~x, ~~~y)), :(f(a))) === nothing
+true</code></pre>
+</div>
+<h3 id="Operation-slots" class="md-heading">Operation slots<a href="#Operation-slots" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>A slot in the position of an operation matches the operation of the subject:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._cmatch(:((~F)(~x)), :(sin(a)))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :x =&gt; :a
+  :F =&gt; :sin</code></pre>
+</div>
+<h2 id="Guards" class="md-heading">Guards<a href="#Guards" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>A wildcard may have a guard, a predicate its value must satisfy, written <code class="md-code-inline">~x::pred</code>. The match is made only when <code class="md-code-inline">pred(value)</code> returns <code class="md-code-inline">true</code>; a guard which returns anything else, or throws an error, rejects the match.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._cmatch(:((~x)^(~n::isinteger)), :(x^2))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :n =&gt; 2
+  :x =&gt; :x
+
+julia&gt; ACPM._match(:((~x)^(~n::isinteger)), :(x^y)) === nothing
+true</code></pre>
+</div>
+<p>A guard may be the name of a function, or an expression which evaluates to one, such as an anonymous function or a partially applied function. As <code class="md-code-inline">y &gt; 1</code> throws an error for the symbol <code class="md-code-inline">y</code>, the first guard below rejects <code class="md-code-inline">x^y</code>:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._cmatch(:((~x)^(~n::(n -&gt; n &gt; 1))), :(x^y)) === nothing
+true
+
+julia&gt; ACPM._match(:((~x)^(~n::!=(-1))), :(x^3))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :n =&gt; 3
+  :x =&gt; :x</code></pre>
+</div>
+<p>A guard on a segment is passed all of its values, as a vector or tuple:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._cmatch(:(~x + ~~y::(u -&gt; length(u) == 2)), :(a + b + c))
+Base.ImmutableDict{Symbol, Any} with 2 entries:
+  :y =&gt; (:b, :c)
+  :x =&gt; :a
+
+julia&gt; ACPM._eachmatch(:(~x + ~~y::(!isempty)), :(a + b)) |&gt; collect
+2-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:x =&gt; :a, :y =&gt; Any[:b])
+ Base.ImmutableDict(:x =&gt; :b, :y =&gt; Any[:a])</code></pre>
+</div>
+<h3 id="Where-a-guard-is-found" class="md-heading">Where a guard is found<a href="#Where-a-guard-is-found" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>In a quoted pattern, a guard given by name, or an expression for a guard, is evaluated in <code class="md-code-inline">Main</code> (with names looked up in <code class="md-code-inline">Main</code>, then <code class="md-code-inline">Base</code>) when the pattern is first matched. A predicate defined in a package or another module will not be found there, and the match fails. To use such a predicate, write the pattern with <a href="./reference/#AssociativeCommutativePatternMatching.@pattern-Tuple{Any}"><code class="md-code-inline">@pattern</code></a> (or the left-hand side of a rule), which evaluates each guard where the macro is called, or interpolate the function into the pattern, as in <code class="md-code-inline">:(~x::$ispos)</code>:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; module M
+           import AssociativeCommutativePatternMatching as ACPM
+           using AssociativeCommutativePatternMatching: @pattern
+           ispos(x) = x &gt; 0
+           quoted = ACPM._match(:(f(~x::ispos)), :(f(2)))
+           macroed = ACPM._match(@pattern(f(~x::ispos)), :(f(2)))
+           interpolated = ACPM._cmatch(:(f(~x::$ispos)), :(f(2)))
+       end;
+
+julia&gt; M.quoted === nothing # `ispos` is not found in `Main`
+true
+
+julia&gt; M.macroed
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; 2
+
+julia&gt; M.interpolated
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; 2</code></pre>
+</div>
+<h2 id="The-@pattern-macro" class="md-heading">The <code class="md-code-inline">@pattern</code> macro<a href="#The-@pattern-macro" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>A pattern may be written as a quoted expression, as above, or with the <a href="./reference/#AssociativeCommutativePatternMatching.@pattern-Tuple{Any}"><code class="md-code-inline">@pattern</code></a> macro, which differs only in how guards are found (see <a href="./#Where-a-guard-is-found">Where a guard is found</a>). Values may be interpolated into a pattern with <code class="md-code-inline">$</code>:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; n = 3;
+
+julia&gt; pat = @pattern (~x)^$n
+:((~x) ^ 3)
+
+julia&gt; ACPM._cmatch(pat, :(y^3))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; :y</code></pre>
+</div>
+<h2 id="Rules" class="md-heading">Rules<a href="#Rules" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<h3 id="@rule-and-@acrule" class="md-heading"><code class="md-code-inline">@rule</code> and <code class="md-code-inline">@acrule</code><a href="#@rule-and-@acrule" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>The <a href="./reference/#AssociativeCommutativePatternMatching.@rule-Tuple{Any}"><code class="md-code-inline">@rule</code></a> macro creates a rule, <code class="md-code-inline">lhs =&gt; rhs</code>, matched with <code class="md-code-inline">_cmatch</code>; <a href="./reference/#AssociativeCommutativePatternMatching.@acrule-Tuple{Any}"><code class="md-code-inline">@acrule</code></a> creates one matched with <code class="md-code-inline">_match</code>. The left-hand side is a pattern, as for <code class="md-code-inline">@pattern</code>. Calling a rule on a subject returns <code class="md-code-inline">rhs</code>, with each wildcard replaced by its value in the first match, or <code class="md-code-inline">nothing</code> when the subject does not match.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; r = @rule sin(2 * ~x) =&gt; 2 * sin(~x) * cos(~x)
+@rule sin(2 * ~x) =&gt; 2 * sin(~x) * cos(~x)
+
+julia&gt; r(:(sin(2t)))
+:(2 * sin(t) * cos(t))
+
+julia&gt; r(:(cos(2t))) === nothing
+true
+
+julia&gt; r = @acrule ~x + ~y =&gt; (~x) * (~y);
+
+julia&gt; r(:(a + b + c))
+:((b + c) * a)
+
+julia&gt; (@rule ~x + ~y =&gt; (~x) * (~y))(:(a + b + c)) === nothing
+true</code></pre>
+</div>
+<p>For an <code class="md-code-inline">Expr</code> subject, as above, the values are substituted into <code class="md-code-inline">rhs</code> and an <code class="md-code-inline">Expr</code> is returned. For a symbolic subject, <code class="md-code-inline">rhs</code> is Julia code that is run, so the result is computed:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; using SymEngine
+
+julia&gt; @vars x y;
+
+julia&gt; r = @rule (~x)^(~n::isinteger) =&gt; (~x)^(~n + 1) / (~n + 1);
+
+julia&gt; r(x^2)
+(1/3)*x^3
+
+julia&gt; r(x^y) === nothing
+true</code></pre>
+</div>
+<p>The right-hand side is compiled where the macro is called, so it may use the functions and variables of the calling module. A segment is replaced by its values, which may be splatted into a call:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; r = @rule ~x + ~~y =&gt; +(~~y...);
+
+julia&gt; r(x + y + 2) # drops one term of the sum
+x + y</code></pre>
+</div>
+<p>As this substitutes a tuple into an <code class="md-code-inline">Expr</code> for an <code class="md-code-inline">Expr</code> subject, a segment on the right-hand side is best used with symbolic subjects.</p>
+<h3 id="Rewriting-with-a-match" class="md-heading">Rewriting with a match<a href="#Rewriting-with-a-match" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p><a href="./reference/#AssociativeCommutativePatternMatching._rewrite-Tuple{Base.ImmutableDict{Symbol, Any}, Any}"><code class="md-code-inline">_rewrite(σ, rhs)</code></a> replaces the wildcards in the template <code class="md-code-inline">rhs</code> with their values in the match <code class="md-code-inline">σ</code>. The type of the subject may be given, as <code class="md-code-inline">_rewrite(σ, rhs, T)</code> or <code class="md-code-inline">_rewrite(T, σ, rhs)</code>; otherwise it is found from the values in <code class="md-code-inline">σ</code>. For an <code class="md-code-inline">Expr</code> subject the result is an expression; for a symbolic one each call is evaluated, with the names in <code class="md-code-inline">rhs</code> looked up in <code class="md-code-inline">Main</code>, <code class="md-code-inline">Base</code> and then this package.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; σ = ACPM._match(:(~x * tanh(exp(~x))), :(a^2 * tanh(exp(a^2))))
+Base.ImmutableDict{Symbol, Any} with 1 entry:
+  :x =&gt; :(a ^ 2)
+
+julia&gt; ACPM._rewrite(σ, :(~x * tanh(exp(~x))))
+:(a ^ 2 * tanh(exp(a ^ 2)))
+
+julia&gt; ACPM._rewrite(Expr, σ, :(sqrt(~x)))
+:(sqrt(a ^ 2))</code></pre>
+</div>
+<h3 id="Replacing" class="md-heading">Replacing<a href="#Replacing" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p><code class="md-code-inline">_replace(ex, pat =&gt; rhs)</code> walks through an expression, replacing each part matching <code class="md-code-inline">pat</code> (with <code class="md-code-inline">_match</code>) by <code class="md-code-inline">rhs</code>. The left-hand side may also be a function, to replace an operation, or a variable or expression to replace exactly.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM._replace(:(cos(2x)^2 + sin(2x)^2), :(sin(~x)^2 + cos(~x)^2) =&gt; 1)
+1
+
+julia&gt; ACPM._replace(:(2cos(2x)^2 + 2sin(2x)^2), :(~!a * sin(~x)^2 + ~!a * cos(~x)^2) =&gt; :(~!a))
+2</code></pre>
+</div>
+<h2 id="Commutative-and-associative-operations" class="md-heading">Commutative and associative operations<a href="#Commutative-and-associative-operations" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>Whether an operation is commutative or associative is decided by the functions <code class="md-code-inline">iscommutative</code> and <code class="md-code-inline">isassociative</code>, which are passed the operation of the subject. By default only <code class="md-code-inline">+</code> and <code class="md-code-inline">*</code> (as functions or symbols) are commutative and associative. They may be extended for other operations; <code class="md-code-inline">_cmatch</code> uses only <code class="md-code-inline">iscommutative</code>.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia-repl">julia&gt; ACPM.iscommutative(x::Symbol) = x ∈ (:+, :*, :fₘ)
+
+julia&gt; length(ACPM._ceachmatch(:(fₘ(~x, ~y)), :(fₘ(a, b))))
+2
+
+julia&gt; length(ACPM._ceachmatch(:(f(~x, ~y)), :(f(a, b))))
+1</code></pre>
+</div>
+<h2 id="Differences-from-SymbolicUtils" class="md-heading">Differences from SymbolicUtils<a href="#Differences-from-SymbolicUtils" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>The wildcards <code class="md-code-inline">~x</code>, <code class="md-code-inline">~!x</code> and <code class="md-code-inline">~~x</code>, guards written <code class="md-code-inline">~x::pred</code>, and the forms <code class="md-code-inline">@rule lhs =&gt; rhs</code> and <code class="md-code-inline">@acrule lhs =&gt; rhs</code> are as in SymbolicUtils. Compared with SymbolicUtils (v4.51), this package differs in that:</p>
+<ul class="md-list-tight">
+<li><p>A subject may be an <code class="md-code-inline">Expr</code>, as well as a symbolic term from any package implementing TermInterface.</p>
+</li>
+<li><p><code class="md-code-inline">_eachmatch</code> and <code class="md-code-inline">_ceachmatch</code> return every match of a pattern, not just the first.</p>
+</li>
+<li><p>A segment <code class="md-code-inline">~~x</code> binds to a vector (<code class="md-code-inline">_match</code>) or a tuple (<code class="md-code-inline">_cmatch</code>), rather than to a view of the arguments, and a guard on a segment is passed these.</p>
+</li>
+<li><p>There is a segment <code class="md-code-inline">~~~x</code> which matches one or more arguments.</p>
+</li>
+<li><p>A default slot <code class="md-code-inline">~!x</code> may be used in a denominator, defaulting to <code class="md-code-inline">1</code>, as well as in <code class="md-code-inline">+</code>, <code class="md-code-inline">*</code> and an exponent.</p>
+</li>
+<li><p>A guard which returns anything but <code class="md-code-inline">true</code>, or which throws an error, rejects the match. In SymbolicUtils, the rule throws an error.</p>
+</li>
+<li><p>A guard in a quoted pattern is looked up in <code class="md-code-inline">Main</code> (see <a href="./#Where-a-guard-is-found">Where a guard is found</a>). Guards in <code class="md-code-inline">@pattern</code>, <code class="md-code-inline">@rule</code> and <code class="md-code-inline">@acrule</code> are evaluated in the calling module, as with SymbolicUtils&#39; <code class="md-code-inline">@rule</code>.</p>
+</li>
+</ul>
+<p>Some features of SymbolicUtils&#39; rules are not supported:</p>
+<ul class="md-list-tight">
+<li><p>a predicate over the whole rule, <code class="md-code-inline">@rule lhs =&gt; rhs where pred</code>. For a symbolic subject, the same effect comes from a right-hand side such as <code class="md-code-inline">pred ? rhs : nothing</code>, as a rule returns whatever <code class="md-code-inline">rhs</code> evaluates to;</p>
+</li>
+<li><p><code class="md-code-inline">~</code> alone on the right-hand side, to return the match;</p>
+</li>
+<li><p>contextual predicates, and the macro <code class="md-code-inline">@capture</code>.</p>
+</li>
+</ul>
+      </article>
+      <footer class="md-footer">
+<p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
+      </footer>
+    </main>
+    <aside class="md-toc">
+      <div class="md-toc-inner">
+        <p class="md-toc-title">On this page</p>
+          <a class="md-toc-link md-toc-h2" href="#Matching">Matching</a>
+          <a class="md-toc-link md-toc-h2" href="#Wildcards">Wildcards</a>
+            <a class="md-toc-link md-toc-h3" href="#Slots">Slots</a>
+            <a class="md-toc-link md-toc-h3" href="#Default-slots">Default slots</a>
+            <a class="md-toc-link md-toc-h3" href="#Segments">Segments</a>
+            <a class="md-toc-link md-toc-h3" href="#Operation-slots">Operation slots</a>
+          <a class="md-toc-link md-toc-h2" href="#Guards">Guards</a>
+            <a class="md-toc-link md-toc-h3" href="#Where-a-guard-is-found">Where a guard is found</a>
+          <a class="md-toc-link md-toc-h2" href="#The-@pattern-macro">The @pattern macro</a>
+          <a class="md-toc-link md-toc-h2" href="#Rules">Rules</a>
+            <a class="md-toc-link md-toc-h3" href="#@rule-and-@acrule">@rule and @acrule</a>
+            <a class="md-toc-link md-toc-h3" href="#Rewriting-with-a-match">Rewriting with a match</a>
+            <a class="md-toc-link md-toc-h3" href="#Replacing">Replacing</a>
+          <a class="md-toc-link md-toc-h2" href="#Commutative-and-associative-operations">Commutative and associative operations</a>
+          <a class="md-toc-link md-toc-h2" href="#Differences-from-SymbolicUtils">Differences from SymbolicUtils</a>
+      </div>
+    </aside>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia-repl.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <script src="./siteinfo.js"></script>
+  <script src="./../versions.js"></script>
+  <script src="./assets/materialdocs.js?v=a953330e"></script>
+</body>
+</html>

@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reference — AssociativeCommutativePatternMatching Documentation</title>
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=72af4141">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap">
+  <meta name="title" content="Reference — AssociativeCommutativePatternMatching Documentation">
+  <meta property="og:title" content="Reference — AssociativeCommutativePatternMatching Documentation">
+  <meta property="twitter:title" content="Reference — AssociativeCommutativePatternMatching Documentation">
+  <meta name="description" content="Documentation for AssociativeCommutativePatternMatching Documentation.">
+  <meta property="og:description" content="Documentation for AssociativeCommutativePatternMatching Documentation.">
+  <meta property="twitter:description" content="Documentation for AssociativeCommutativePatternMatching Documentation.">
+  <meta property="og:url" content="https://jverzani.github.io/AssociativeCommutativePatternMatching.jl/reference/">
+  <meta property="twitter:url" content="https://jverzani.github.io/AssociativeCommutativePatternMatching.jl/reference/">
+  <link rel="canonical" href="https://jverzani.github.io/AssociativeCommutativePatternMatching.jl/reference/">
+  <script>
+    (function(){
+      document.documentElement.classList.add('no-transition');
+      var t=localStorage.getItem('md-theme');if(t)document.documentElement.setAttribute('data-theme',t);
+      window.addEventListener('load',function(){setTimeout(function(){document.documentElement.classList.remove('no-transition');},50);});
+    })()
+  </script>
+</head>
+<body data-warn-outdated>
+  <header class="md-navbar">
+    <button id="md-hamburger" class="md-icon-btn md-hamburger" aria-label="Toggle navigation" aria-expanded="false"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+    <span class="md-navbar-title">AssociativeCommutativePatternMatching Documentation</span>
+    <span class="md-navbar-spacer"></span>
+    <button id="md-search-btn" class="md-search-bar" aria-label="Search documentation" aria-expanded="false">
+      <svg class="md-icon md-search-bar-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="md-search-bar-label">Search docs</span>
+      <kbd class="md-search-bar-kbd">Ctrl K</kbd>
+    </button>
+    <div id="md-version" class="md-version" hidden>
+      <button id="md-version-btn" class="md-version-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select documentation version">
+        <span id="md-version-current" class="md-version-current"></span>
+        <svg class="md-icon md-version-caret" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <ul id="md-version-menu" class="md-version-menu" role="listbox" hidden></ul>
+    </div>
+    <button id="md-theme-toggle" class="md-icon-btn" title="Toggle dark mode" aria-label="Toggle dark mode"><svg class="md-icon md-icon-light" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 000-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/></svg><svg class="md-icon md-icon-dark" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></button>
+  </header>
+  <div class="md-layout">
+    <nav class="md-sidebar">
+      <a href="../">Home</a>
+      <a href="../matchers/">The two matchers</a>
+      <a href="../reference/" class="md-nav-active">Reference</a>
+    </nav>
+    <main class="md-content">
+      <article class="md-article">
+      <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
+<h1 id="Reference" class="md-heading">Reference<a href="#Reference" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
+<div class="md-index">
+<ul>
+<li><a href="#AssociativeCommutativePatternMatching.AssociativeCommutativePatternMatching"><code>AssociativeCommutativePatternMatching.AssociativeCommutativePatternMatching</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching.Rule"><code>AssociativeCommutativePatternMatching.Rule</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching._ceachmatch-Tuple{Any, Any}"><code>AssociativeCommutativePatternMatching._ceachmatch</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching._cmatch-Tuple{Any, Any}"><code>AssociativeCommutativePatternMatching._cmatch</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching._replace-Tuple{Any, Any, Pair}"><code>AssociativeCommutativePatternMatching._replace</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching._rewrite-Tuple{Base.ImmutableDict{Symbol, Any}, Any}"><code>AssociativeCommutativePatternMatching._rewrite</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching.@acrule-Tuple{Any}"><code>AssociativeCommutativePatternMatching.@acrule</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching.@pattern-Tuple{Any}"><code>AssociativeCommutativePatternMatching.@pattern</code></a></li>
+<li><a href="#AssociativeCommutativePatternMatching.@rule-Tuple{Any}"><code>AssociativeCommutativePatternMatching.@rule</code></a></li>
+</ul>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching.AssociativeCommutativePatternMatching">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching.AssociativeCommutativePatternMatching</code></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<p>AssociativeCommutativePatternMatching</p>
+<p>This package provides an implementation of the algorithm of <a href="https://arxiv.org/abs/1705.00907">Non-linear Associative-Commutative Many-to-One Pattern Matching with Sequence Variables</a> by Manuel Krebber through Chapter 3, referred to as MatchPy.</p>
+<p>A match is a dictionary containing a mapping between wildcard values in the <em>pattern</em> with values in the <em>subject</em>.</p>
+<p>Patterns are specified with expressions and within wildcards are specified by:</p>
+<div class="md-table-wrap">
+<table class="md-table">
+<thead>
+<tr>
+<th style="text-align:left">Syntax</th>
+<th style="text-align:left">with predicate</th>
+<th style="text-align:left">note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~x</code></td>
+<td style="text-align:left"><code class="md-code-inline">~x::pred</code></td>
+<td style="text-align:left">a slot variable to match a single argument</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~!x</code></td>
+<td style="text-align:left"><code class="md-code-inline">~!x</code></td>
+<td style="text-align:left">a default slot variable to match a single argument</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~~x</code></td>
+<td style="text-align:left"><code class="md-code-inline">~~x::pred</code></td>
+<td style="text-align:left">a star variable to match 0, 1 or more arguments</td>
+</tr>
+<tr>
+<td style="text-align:left"><code class="md-code-inline">~~~x</code></td>
+<td style="text-align:left"><code class="md-code-inline">~~~x::pred</code></td>
+<td style="text-align:left">a plus variable to match 1 or more arguments</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The variable name is <code class="md-code-inline">x</code> in each of the above; variable names must be unique within a pattern (so one can&#39;t have both a <code class="md-code-inline">~x</code> and a <code class="md-code-inline">~~x</code>, though the same variable may appear more than once.</p>
+<p>A predicate is a function which is called on a proposed match; unless it returns <code class="md-code-inline">true</code> (or if it throws an error) the match is rejected. In a quoted pattern, a predicate given by name, as in <code class="md-code-inline">:(~x::isfoo)</code>, is looked up in <code class="md-code-inline">Main</code> and <code class="md-code-inline">Base</code>. To use a predicate from another module, write the pattern with <code class="md-code-inline">@pattern</code>, which evaluates the predicate where the macro is called, or interpolate the function, as in <code class="md-code-inline">:(~x::$isfoo)</code>.</p>
+<p>A default slot variable has default values for the enclosing operations of <code class="md-code-inline">+</code> (0), <code class="md-code-inline">*</code> (1),  and <code class="md-code-inline">^</code> (the exponent, also 1).</p>
+<p>Matching is against arguments in a function or the function head. Functions may be associative and/or commutative. The MatchPy algorithm allows the separation (as happens with matrix multiplication).</p>
+<p>The pattern <code class="md-code-inline">f(a, ~x, c)</code> would match <code class="md-code-inline">f(a,b,c)</code> (with <code class="md-code-inline">:x =&gt; b</code>) but not match <code class="md-code-inline">f(a,b₁, b₂, c)</code>. Whereas <code class="md-code-inline">f(a, ~~x, c)</code> would match with <code class="md-code-inline">:x =&gt; [b₁, b₂]</code>.</p>
+<p>For <code class="md-code-inline">AssociativeCommutativePatternMatching</code>  and associative functions, matches have the function applied to slot variables. So <code class="md-code-inline">+(a,~x,c)</code> matched against <code class="md-code-inline">:(+(a, b₁, b₂, c))</code> would have <code class="md-code-inline">:x =&gt; :(b₁ + b₂)</code>.</p>
+<p>Before matching, the arguments of commutative functions in the subject (and in parts of the pattern without wildcards) are put in a standard order. So <code class="md-code-inline">sin(a + b) + ~x</code> matches <code class="md-code-inline">sin(b + a) + c</code>, but <code class="md-code-inline">sin(a - b) + ~x</code> does not match <code class="md-code-inline">sin(b - a) + c</code>. As a consequence, matched values have commutative arguments in this standard order, e.g. <code class="md-code-inline">(~x)^(~x)</code> matched against <code class="md-code-inline">:((x + p)^(x + p))</code> has <code class="md-code-inline">:x =&gt; :(p + x)</code>.</p>
+<p>The primary function is the unexported <code class="md-code-inline">_eachmatch(pat, sub</code>) function which returns an iterator of matches. The <code class="md-code-inline">_match(pat, sub)</code> function returns the first value. There are also <code class="md-code-inline">_rewrite</code> and <code class="md-code-inline">_replace</code> functions.</p>
+<p><strong>Example</strong></p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; @time AssociativeCommutativePatternMatching._eachmatch(:(~x + ~y), :(a + b + c));
+  0.000071 seconds (60 allocations: 3.000 KiB)
+
+julia&gt; @time AssociativeCommutativePatternMatching._eachmatch(:(~x + ~y), :(a + b)) |&gt; collect
+  0.000203 seconds (527 allocations: 26.219 KiB)
+2-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:x =&gt; :a, :y =&gt; :b)
+ Base.ImmutableDict(:x =&gt; :b, :y =&gt; :a)
+
+julia&gt; @time AssociativeCommutativePatternMatching._eachmatch(:(~x + ~y), :(a + b + c)) |&gt; collect
+  0.000233 seconds (1.46 k allocations: 70.125 KiB)
+6-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:x =&gt; :a, :y =&gt; :(b + c))
+ Base.ImmutableDict(:x =&gt; :b, :y =&gt; :(a + c))
+ Base.ImmutableDict(:x =&gt; :(a + b), :y =&gt; :c)
+ Base.ImmutableDict(:x =&gt; :c, :y =&gt; :(a + b))
+ Base.ImmutableDict(:x =&gt; :(a + c), :y =&gt; :b)
+ Base.ImmutableDict(:x =&gt; :(b + c), :y =&gt; :a)
+
+ ```
+
+The reduced number of allocations in the first call, is due to the values being returned as a generator. There are additional allocations when iterated by `collect`. The second example shows commutativity being employed, as `+` is assumed to be commutative. As well, `+` is assumed to be associative, so there are 6 matches in the last example, the first of which matches `:(a + (b+c))`.
+
+## Commutative matching
+
+The package also has a matcher which takes commutativity, but not associativity, into account. It is derived from the matcher used for the rule-based methods of [SymbolicIntegration](https://github.com/JuliaSymbolics/SymbolicIntegration.jl). The function `_ceachmatch(pat, sub)` returns a vector of the matches and `_cmatch(pat, sub)` the first match or `nothing`. The macros `@pattern` and `@rule` create patterns and rewriting rules whose guards and right-hand sides are resolved in the calling module; `@acrule` creates a rule which matches with `_match` instead. As with everything else here, they are not exported (SymbolicUtils has macros of these names), so use, e.g., `using AssociativeCommutativePatternMatching: @rule`. The function `_rewrite` rewrites a template using a match.
+</code></pre>
+</div>
+<p>julia&gt; AssociativeCommutativePatternMatching._ceachmatch(:(~x + ~y), :(a + b + c)) Base.ImmutableDict{Symbol, Any}[] ```</p>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching.Rule">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching.Rule</code></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">Rule</code></pre>
+</div>
+<p>A rule created by <a href="../reference/#AssociativeCommutativePatternMatching.@rule-Tuple{Any}"><code class="md-code-inline">@rule</code></a> or <a href="../reference/#AssociativeCommutativePatternMatching.@acrule-Tuple{Any}"><code class="md-code-inline">@acrule</code></a>. Call it on a subject to rewrite it: <code class="md-code-inline">rule(sub)</code> returns the rewritten term, or <code class="md-code-inline">nothing</code> if <code class="md-code-inline">sub</code> does not match.</p>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching._ceachmatch-Tuple{Any, Any}">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching._ceachmatch</code> — <span class="md-docstring-sig">Tuple{Any, Any}</span></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">_ceachmatch(pat, sub)</code></pre>
+</div>
+<p>Return a vector of the matches of the pattern <code class="md-code-inline">pat</code> to the subject <code class="md-code-inline">sub</code>, each a dictionary from wildcard names to their values. The vector is empty if there is no match.</p>
+<p>Unlike <code class="md-code-inline">_eachmatch</code>, only commutativity of <code class="md-code-inline">+</code> and <code class="md-code-inline">*</code> is used, not associativity.</p>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching._cmatch-Tuple{Any, Any}">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching._cmatch</code> — <span class="md-docstring-sig">Tuple{Any, Any}</span></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">_cmatch(pat, sub)</code></pre>
+</div>
+<p>Return the first match of the pattern <code class="md-code-inline">pat</code> to the subject <code class="md-code-inline">sub</code>, or <code class="md-code-inline">nothing</code> if there is no match. See <a href="../reference/#AssociativeCommutativePatternMatching._ceachmatch-Tuple{Any, Any}"><code class="md-code-inline">_ceachmatch</code></a>.</p>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching._replace-Tuple{Any, Any, Pair}">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching._replace</code> — <span class="md-docstring-sig">Tuple{Any, Any, Pair}</span></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">_replace([T], ex, args::Pair...)</code></pre>
+</div>
+<p>Replace parts of an expression with something else.</p>
+<p>Returns a symbolic object of same types as <code class="md-code-inline">ex</code></p>
+<p>The replacement is specified using <code class="md-code-inline">variable =&gt; value</code>; these are processed left to right.</p>
+<p>There are different methods depending on the type of key in the the <code class="md-code-inline">key =&gt; value</code> pairs specified:</p>
+<ul class="md-list-tight">
+<li><p>A function call can be replaced by passing in a pair <code class="md-code-inline">𝐹 =&gt; 𝐹</code>, (e.g. <code class="md-code-inline">sin=&gt;cos</code>)</p>
+</li>
+<li><p>a variable, say <code class="md-code-inline">a</code> can be replaced by passing in  a pair like <code class="md-code-inline">a =&gt; a^2</code></p>
+</li>
+<li><p>an expression can be replaced similarly.</p>
+</li>
+<li><p>For wildcard matching, an expression is used on both sides, as in <code class="md-code-inline">:(cos(~x)) =&gt; :(sin(~x))</code>.</p>
+</li>
+</ul>
+<p>The first three are straightforward. First, for function heads:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-@repl">julia&gt; using SymEngine
+
+julia&gt; using AssociativeCommutativePatternMatching; import AssociativeCommutativePatternMatching: _replace
+
+julia&gt; @vars x p
+(x, p)
+
+julia&gt; _replace(cos(x) - cos(x^2), cos =&gt; sin)
+sin(x) - sin(x^2)</code></pre>
+</div>
+<p>(See below for a hack when the function head is <code class="md-code-inline">exp</code>.)</p>
+<p>For symbolic variables, we have:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-@repl">julia&gt; ex = cos(x) - x*p
+-p*x + cos(x)
+
+julia&gt; _replace(ex, x =&gt; 2*one(x))
+-2*p + cos(2)
+
+julia&gt; _replace(ex, p =&gt; 2*one(x))
+-2*x + cos(x)</code></pre>
+</div>
+<p>For symbolic expressions, we have:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-@repl">julia&gt; ex = cos(x)^2 + cos(x) + 1
+1 + cos(x)^2 + cos(x)
+
+julia&gt; _replace(ex, cos(x) =&gt; x)
+1 + x + x^2</code></pre>
+</div>
+<p>Replacements occur only if an entire node in the expression tree is matched:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-@repl">julia&gt; u = 1 + x
+1 + x
+
+julia&gt; _replace(u + exp(-u), u =&gt; x^2)
+1 + x + exp(-x^2)</code></pre>
+</div>
+<p>(As this addition has three terms, <code class="md-code-inline">1+x</code> is not a subtree in the expression tree.)</p>
+<p>The last needs more explanation, as there can be wildcards in the expression.</p>
+<p>Wildcards have a naming convention:</p>
+<ul class="md-list-tight">
+<li><p><code class="md-code-inline">~x</code> to match a single part of an expression (possibly all arguments to a function)</p>
+</li>
+<li><p><code class="md-code-inline">~!x</code> like previous, only has a default value when operation is <code class="md-code-inline">+</code>, <code class="md-code-inline">*</code>, or <code class="md-code-inline">^</code>.</p>
+</li>
+<li><p><code class="md-code-inline">~~x</code> match 0, 1, or more variables</p>
+</li>
+<li><p><code class="md-code-inline">~~x</code> match 1 or more variables</p>
+</li>
+</ul>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-@repl">julia&gt; _replace(cos(pi + x^2), :(cos(pi + ~x)) =&gt; :(-cos(~x)))
+-cos(x^2)
+</code></pre>
+</div>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-@repl">julia&gt; ex = log(sin(x)) + tan(sin(x^2))
+log(sin(x)) + tan(sin(x^2))
+
+julia&gt; _replace(ex, :(sin(~x)) =&gt; :(tan((~x) / 2)))
+log(tan((1/2)*x)) + tan(tan((1/2)*x^2))
+
+julia&gt; _replace(ex, :(sin(~x)) =&gt; :(~x))
+log(x) + tan(x^2)
+
+julia&gt; _replace(x*p, :((~x) * x) =&gt; :(~x))
+p</code></pre>
+</div>
+<p><strong>Picture</strong></p>
+<p>The <code class="md-code-inline">AbstractTrees</code> package can print this tree-representation of the expression <code class="md-code-inline">ex = sin(x + x*log(x) + cos(x + p + x^2))</code>:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; print_tree(ex;maxdepth=10)
+sin
+└─ +
+   ├─ x
+   ├─ *
+   │  ├─ x
+   │  └─ log
+   │     └─ x
+   └─ cos              &lt;--
+      └─ +             ...
+         ├─ x          &lt;--
+         ├─ p          ...
+         └─ ^          ...
+            ├─ x       ...
+            └─ 2       ...</code></pre>
+</div>
+<p>In the <code class="md-code-inline">_replace</code> command, the  wildcard expression <code class="md-code-inline">:(cos(x + ~x))</code> looks at the part of the tree that has <code class="md-code-inline">cos</code> as a node, and the lone child is an expression with node <code class="md-code-inline">+</code> and child <code class="md-code-inline">x</code>. The <code class="md-code-inline">~x then matches</code>p + x^2`.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-@repl">julia&gt; _replace(sin(x + x*log(x) + cos(x + p + x^2)), :(cos(x + ~x)) =&gt; :(sin(~x)))
+sin(x + x*log(x) + sin(p + x^2))
+</code></pre>
+</div>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching._rewrite-Tuple{Base.ImmutableDict{Symbol, Any}, Any}">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching._rewrite</code> — <span class="md-docstring-sig">Tuple{Base.ImmutableDict{Symbol, Any}, Any}</span></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">_rewrite(σ, rhs, [S])
+_rewrite(S, σ, rhs)</code></pre>
+</div>
+<p>Rewrite the template <code class="md-code-inline">rhs</code> using the match <code class="md-code-inline">σ</code>.</p>
+<p>If <code class="md-code-inline">rhs</code> is a function, it is called on <code class="md-code-inline">σ</code>, as for a rule from <code class="md-code-inline">@rule</code>.</p>
+<p>If <code class="md-code-inline">rhs</code> is an expression, its wildcards are replaced by their values. For an <code class="md-code-inline">Expr</code> subject (<code class="md-code-inline">S == Expr</code>) the result is an expression. Otherwise each call is evaluated: an operation or other name is looked up in <code class="md-code-inline">Main</code>, <code class="md-code-inline">Base</code> and then this package, so to use a function from another module use <code class="md-code-inline">@rule</code>, or splice the function into the template (<code class="md-code-inline">:($f(~x))</code>).</p>
+<p>The subject type <code class="md-code-inline">S</code> is found from the values in <code class="md-code-inline">σ</code> if not given.</p>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching.@acrule-Tuple{Any}">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching.@acrule</code> — <span class="md-docstring-sig">Tuple{Any}</span></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">@acrule lhs =&gt; rhs</code></pre>
+</div>
+<p>Create a rule, as <a href="../reference/#AssociativeCommutativePatternMatching.@rule-Tuple{Any}"><code class="md-code-inline">@rule</code></a> does, which matches with the associative-commutative matcher, <code class="md-code-inline">_match</code>, rather than <a href="../reference/#AssociativeCommutativePatternMatching._cmatch-Tuple{Any, Any}"><code class="md-code-inline">_cmatch</code></a>. So <code class="md-code-inline">+</code> and <code class="md-code-inline">*</code> are taken to be associative as well as commutative, and <code class="md-code-inline">~x + ~y</code> matches <code class="md-code-inline">a + b + c</code>. A segment (<code class="md-code-inline">~~x</code>) is replaced by its vector of values.</p>
+<p><strong>Examples</strong></p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; using AssociativeCommutativePatternMatching: @rule, @acrule
+
+julia&gt; r = @acrule ~x + ~y =&gt; (~x) * (~y);
+
+julia&gt; r(:(a + b + c))
+:((b + c) * a)
+
+julia&gt; (@rule ~x + ~y =&gt; (~x) * (~y))(:(a + b + c)) === nothing
+true</code></pre>
+</div>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching.@pattern-Tuple{Any}">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching.@pattern</code> — <span class="md-docstring-sig">Tuple{Any}</span></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">@pattern expr</code></pre>
+</div>
+<p>Create a pattern from <code class="md-code-inline">expr</code>, as <code class="md-code-inline">:(expr)</code> would, except each guard of a wildcard (<code class="md-code-inline">~x::pred</code>, <code class="md-code-inline">~~x::pred</code>, <code class="md-code-inline">~~~x::pred</code>) is evaluated where the macro is called and spliced into the pattern as a value.</p>
+<p>A guard in a quoted pattern, <code class="md-code-inline">:(~x::isfoo)</code>, is looked up by name in <code class="md-code-inline">Main</code> and <code class="md-code-inline">Base</code> when the pattern is matched, so a predicate defined in another package is not found. With <code class="md-code-inline">@pattern</code> the guard is resolved in the calling module, as is any function a guard such as <code class="md-code-inline">(u -&gt; isfoo(u))</code> refers to.</p>
+<p>Values may be interpolated with <code class="md-code-inline">$</code>, as with a quoted expression.</p>
+<p><strong>Examples</strong></p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; module Ext
+           using AssociativeCommutativePatternMatching: @pattern
+           isfoo(x) = x == :a
+           pat = @pattern sin(~x::isfoo)
+       end;
+
+julia&gt; AssociativeCommutativePatternMatching._ceachmatch(Ext.pat, :(sin(a)))
+1-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:x =&gt; :a)</code></pre>
+</div>
+</div>
+</div>
+<div class="md-docstring" id="AssociativeCommutativePatternMatching.@rule-Tuple{Any}">
+<div class="md-docstring-header">
+<h4 class="md-docstring-binding"><code>AssociativeCommutativePatternMatching.@rule</code> — <span class="md-docstring-sig">Tuple{Any}</span></h4>
+<a class="md-docstring-source" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="View source">source</a>
+</div>
+<div class="md-docstring-content">
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">@rule lhs =&gt; rhs</code></pre>
+</div>
+<p>Create a rule which rewrites a subject matching the pattern <code class="md-code-inline">lhs</code> into <code class="md-code-inline">rhs</code>, with the wildcards of <code class="md-code-inline">rhs</code> replaced by their matched values.</p>
+<p><code class="md-code-inline">lhs</code> is a pattern, as for <a href="../reference/#AssociativeCommutativePatternMatching.@pattern-Tuple{Any}"><code class="md-code-inline">@pattern</code></a>. <code class="md-code-inline">rhs</code> is Julia code: it is compiled into a function of the match where the macro is called, so functions and variables it refers to are those of the calling module. A segment (<code class="md-code-inline">~~x</code>) is replaced by its tuple.</p>
+<p>For a symbolic subject <code class="md-code-inline">rhs</code> is evaluated; for an <code class="md-code-inline">Expr</code> subject, the matched values are substituted into <code class="md-code-inline">rhs</code> and an <code class="md-code-inline">Expr</code> is returned.</p>
+<p><strong>Examples</strong></p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-julia">julia&gt; using AssociativeCommutativePatternMatching: @rule; using SymEngine
+
+julia&gt; @vars x;
+
+julia&gt; r = @rule (~x)^(~n::isinteger) =&gt; (~x)^(~n + 1) / (~n + 1);
+
+julia&gt; r(x^2)
+(1/3)*x^3
+
+julia&gt; r(:(x^2))
+:(x ^ (2 + 1) / (2 + 1))
+
+julia&gt; r(sin(x)) === nothing
+true</code></pre>
+</div>
+</div>
+</div>
+      </article>
+      <footer class="md-footer">
+<p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
+      </footer>
+    </main>
+    <aside class="md-toc">
+      <div class="md-toc-inner">
+        <p class="md-toc-title">On this page</p>
+      </div>
+    </aside>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia-repl.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <script src="../siteinfo.js"></script>
+  <script src="../../versions.js"></script>
+  <script src="../assets/materialdocs.js?v=72af4141"></script>
+</body>
+</html>
