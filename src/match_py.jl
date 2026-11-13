@@ -390,40 +390,89 @@ end
 
 
 # match ~x type variables
-# return a vector of (ss, ps, σ)
+# return an iterable of (ss, ps, σ)
 function _match_regular_variables(ss, ps, fₐ=nothing, σ = match_dict())
     #@show :mrv, ss, ps, fₐ, σ
-    isempty(ps) && return isempty(ss) ? _Partial[(_anyvec(ss), ps, σ)] : _Partial[]
+    isempty(ps) && return isempty(ss) ? _regvars((_anyvec(ss), ps, σ)) : _NOREGVARS
 
     out =  _match_matched_variables(ss, ps, σ, fₐ)
-    isnothing(out) && return _Partial[]
+    isnothing(out) && return _NOREGVARS
 
     ss, ps = out
     # star variables may be empty, others need at least one term
-    isempty(ss) && any(_needs_term, ps) && return _Partial[]
+    isempty(ss) && any(_needs_term, ps) && return _NOREGVARS
 
     # fₐ is  commutative, maybe associative
-    isassociative(fₐ) && return _Partial[(_anyvec(ss), ps, σ)] # associative turns ~x into ~~x
+    isassociative(fₐ) && return _regvars((_anyvec(ss), ps, σ)) # associative turns ~x into ~~x
 
 
     ps_reg, ps′′ = _groupby(is_slot, ps)
-    isempty(ps_reg) && return _Partial[(_anyvec(ss), ps, σ)]
+    isempty(ps_reg) && return _regvars((_anyvec(ss), ps, σ))
 
     if length(ps_reg) < length(ss)
         if ps_reg == ps
             # can't match, not enough
-            return _Partial[]
+            return _NOREGVARS
         end
     end
 
-    dp = _countmap(ps_reg)
-    ds = _countmap(ss)
-    out = _Partial[]
-    for (σ′, ds′) ∈ _split_take(ds, dp)
-        iscompatible(σ′, σ) || continue
-        push!(out, (_uncountmap(ds′), ps′′, merge_match(σ, σ′)))
+    return _RegVarMatches(nothing, _countmap(ss), _countmap(ps_reg), σ, ps′′)
+end
+
+# The matches of the regular variables, lazily (a guard may be costly, or
+# throw): for each way to give each variable a distinct subject term (the
+# first variable's choice changing fastest), the match and what is left.
+struct _RegVarMatches
+    fixed::Union{Nothing, Vector{_Partial}} # when not nothing, the matches
+    ds::Vector     # subject term => count
+    dp::Vector     # variable => count
+    σ::MatchDict
+    ps′′::Any      # the other patterns
+end
+Base.IteratorSize(::Type{_RegVarMatches}) = Base.SizeUnknown()
+Base.eltype(::Type{_RegVarMatches}) = _Partial
+
+_regvars(a::_Partial) = _RegVarMatches(_Partial[a], [], [], match_dict(), nothing)
+const _NOREGVARS = _RegVarMatches(_Partial[], [], [], match_dict(), nothing)
+
+# the state, the choices (or for fixed matches, the index), is updated in place
+function Base.iterate(it::_RegVarMatches, st::Union{Nothing,Vector{Int}} = nothing)
+    fixed = it.fixed
+    if fixed !== nothing
+        i = st === nothing ? 1 : only(st) + 1
+        i > length(fixed) && return nothing
+        st === nothing ? (st = [i]) : (st[1] = i)
+        return (fixed[i], st)
     end
-    return out
+    n = length(it.ds)
+    if st === nothing
+        n == 0 && return nothing
+        inds = ones(Int, length(it.dp))
+    else
+        inds = st
+        _next_choice!(inds, n) || return nothing
+    end
+    while true
+        r = _split_take1(it.ds, it.dp, inds)
+        if r !== nothing
+            σ′, ds′ = r
+            iscompatible(σ′, it.σ) &&
+                return ((_uncountmap(ds′), it.ps′′, merge_match(it.σ, σ′)), inds)
+        end
+        _next_choice!(inds, n) || return nothing
+    end
+end
+
+# the next choice, the first fastest; false after the last
+function _next_choice!(inds, n)
+    j = 1
+    while j ≤ length(inds) && inds[j] == n
+        inds[j] = 1
+        j += 1
+    end
+    j > length(inds) && return false
+    inds[j] += 1
+    return true
 end
 
 
@@ -593,15 +642,15 @@ mutable struct _CommSeqCursor
     θstate::Any                       # state of θ, or _Start()
     s1::Any                           # the non-variable pattern matches
     s1state::Any                      # its state, or _Start()
-    s2::Vector{_Partial}              # the regular variable matches
-    i2::Int
+    s2::_RegVarMatches                # the regular variable matches
+    s2state::Union{Nothing, Vector{Int}} # their state, or nothing
     s3::Union{Nothing,_SeqVarMatches} # the sequence variable matches
     s3state::Union{Nothing,Vector{Int}}
 end
 
 function Base.iterate(it::_CommSeqMatches,
                       c::_CommSeqCursor = _CommSeqCursor(_Start(), nothing, _Start(),
-                                                         _Partial[], 1, nothing, nothing))
+                                                         _NOREGVARS, nothing, nothing, nothing))
     while true
         s3, s3state = c.s3, c.s3state
         if s3 !== nothing
@@ -612,9 +661,12 @@ function Base.iterate(it::_CommSeqMatches,
             end
             c.s3 = nothing
         end
-        if c.i2 ≤ length(c.s2)
-            ss, ps, σ = c.s2[c.i2]
-            c.i2 += 1
+        s2, s2state = c.s2, c.s2state
+        r2 = s2state === nothing ? iterate(s2) : iterate(s2, s2state)
+        if r2 === nothing
+            c.s2, c.s2state = _NOREGVARS, nothing # done; don't iterate it again
+        else
+            (ss, ps, σ), c.s2state = r2
             r3 = _match_sequence_variables(ss, ps, it.fₐ, σ)
             if r3 isa _SeqVarMatches
                 c.s3, c.s3state = r3, nothing
@@ -628,7 +680,7 @@ function Base.iterate(it::_CommSeqMatches,
             if r !== nothing
                 a, c.s1state = r
                 ss, ps, σ = a
-                c.s2, c.i2 = _match_regular_variables(ss, ps, it.fₐ, σ), 1
+                c.s2, c.s2state = _match_regular_variables(ss, ps, it.fₐ, σ), nothing
                 continue
             end
             c.s1 = nothing
@@ -688,29 +740,7 @@ function _uncountmap(dx)
     return Any[k for (k,v) ∈ dx for _ ∈ 1:v]
 end
 
-# different ways to grab the pie: for each way to give each pattern
-# variable a distinct subject term (the first variable's choice changing
-# fastest), the match and the subject terms left
-function _split_take(ds, dp)
-    n = length(ds)
-    k = length(dp)
-    out = Tuple{MatchDict, typeof(ds)}[]
-    n == 0 && return out
-    inds = ones(Int, k)
-    while true
-        r = _split_take1(ds, dp, inds)
-        r === nothing || push!(out, r)
-        # next index, the first fastest
-        j = 1
-        while j ≤ k && inds[j] == n
-            inds[j] = 1
-            j += 1
-        end
-        j > k && return out
-        inds[j] += 1
-    end
-end
-
+# a way to grab the pie: give the ith variable of dp the inds[i]th term of ds
 function _split_take1(ds, dp, inds)
     ds′ = copy(ds)
     σ = match_dict()
