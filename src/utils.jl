@@ -57,16 +57,23 @@ end
 
 function match_dict(σ::MatchDict, @nospecialize(kvs::Pair...))::MatchDict
     for (k,v) ∈ kvs
-        v = isa(v,Number) ? unwrap_const(v) : v
-        if haskey(σ, k)
-            σk = σ[k]
-            !isequal(σk, v) && error("repeated key with different value: $k => $v ($σk)")
-        else
-            σ = MatchDict(σ, k, v)
-        end
+        σ = _add_match(σ, k, v)
     end
     σ
 end
+
+# σ with k => v added
+function _add_match(σ::MatchDict, k::Symbol, @nospecialize(v))::MatchDict
+    v = isa(v,Number) ? unwrap_const(v) : v
+    σk = get(σ, k, _NOKEY)
+    if σk === _NOKEY
+        return MatchDict(σ, k, v)
+    end
+    !isequal(σk, v) && error("repeated key with different value: $k => $v ($σk)")
+    σ
+end
+struct _NoKey end
+const _NOKEY = _NoKey()
 
 #  σ △ σ′ (\bigtriangleup) for every x in the intersection of the domains has same value
 function iscompatible(σ::MatchDict, σ′::MatchDict)
@@ -84,7 +91,7 @@ end
 function merge_match(σ::MatchDict, σ′::MatchDict)
     # assume compatible
     for (k,v) ∈ σ′
-        σ = match_dict(σ, k => v)
+        σ = _add_match(σ, k, v)
     end
     σ
 end
@@ -92,6 +99,10 @@ merge_match(σ::Tuple, σ′::MatchDict) = σ′
 
 function union_merge(θ, σ′::MatchDict)
     (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
+end
+# θ already materialized: no need to be lazy
+function union_merge(θ::Union{Tuple{Vararg{MatchDict}}, Vector{MatchDict}}, σ′::MatchDict)
+    MatchDict[merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′)]
 end
 
 function union_merge(θ, θ′)
@@ -166,6 +177,8 @@ symtype(::T) where T = T
 
 # create a term on the subject side
 function sterm(op, args)
+    # a sum or product of one term is the term (as `pterm` does for Expr)
+    length(args) == 1 && _opsym(op) ∈ (:+, :*) && return only(args)
     # numbers (e.g. 2 in 2x) may not identify the symbolic type
     i = findfirst(a -> !isa(_unwrap_const(a), Real), args)
     S = symtype(args[something(i, firstindex(args))])

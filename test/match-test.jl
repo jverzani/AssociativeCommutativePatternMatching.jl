@@ -224,6 +224,11 @@ end
         σs = _eachmatch(pat, sub)
         u = collect(σs)
         @test length(u) == len
+        # a compiled pattern gives the same matches, in the same order
+        c = AssociativeCommutativePatternMatching.compile_eachmatch(pat)
+        @test collect(_eachmatch(c, sub)) == u
+        @test collect(_eachmatch(c, sub)) == u # and again
+        @test _match(c, sub) == (isempty(u) ? nothing : first(u))
     end
 end
 

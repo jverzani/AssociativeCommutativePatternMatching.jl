@@ -1,10 +1,31 @@
 # For dispatch
 ### ---- match, eachmatch, replace
 
+"""
+    compile_eachmatch(pat)
+
+A pattern prepared once for `_eachmatch` and `_match`: it is put in
+standard order, as `_eachmatch` otherwise does at each call. Use it in
+place of the pattern; the matches are the same. A rule made by
+[`@acrule`](@ref) compiles its pattern.
+"""
+struct EachMatchPattern
+    pat::Any    # the pattern, in standard order (`_canonical`)
+    hasX::Bool  # does it have wildcards?
+end
+Base.show(io::IO, c::EachMatchPattern) = print(io, "compile_eachmatch(", c.pat, ")")
+
+compile_eachmatch(c::EachMatchPattern) = c
+function compile_eachmatch(pat)
+    pat′ = _canonical(pat; pattern=true)
+    EachMatchPattern(pat′, has_𝑋(pat′))
+end
+
 # return iterator of each possible match
-function _eachmatch(pat::Union{Symbol,Expr}, ex)
-    pat, ex = _canonical(pat; pattern=true), _canonical(ex)
-    if has_𝑋(pat)
+_eachmatch(pat::Union{Symbol,Expr}, ex) = _eachmatch(compile_eachmatch(pat), ex)
+function _eachmatch(c::EachMatchPattern, ex)
+    pat, ex = c.pat, _canonical(ex)
+    if c.hasX
         return match_one_to_one([ex], pat)
     else
         σ = syntactic_match(ex, pat)
@@ -12,7 +33,7 @@ function _eachmatch(pat::Union{Symbol,Expr}, ex)
     end
 end
 
-function _match(pat::Union{Symbol, Expr}, sub)
+function _match(pat::Union{Symbol, Expr, EachMatchPattern}, sub)
     σs = _eachmatch(pat, sub)
     σ = iterate(σs)
     isnothing(σ) && return nothing
