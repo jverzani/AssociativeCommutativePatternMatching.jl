@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AssociativeCommutativePatternMatching.jl — AssociativeCommutativePatternMatching Documentation</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=ebe7b28e">
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=394f7a0e">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap">
   <meta name="title" content="AssociativeCommutativePatternMatching.jl — AssociativeCommutativePatternMatching Documentation">
   <meta property="og:title" content="AssociativeCommutativePatternMatching.jl — AssociativeCommutativePatternMatching Documentation">
@@ -52,6 +52,11 @@
       <article class="md-article">
       <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
 <h1 id="AssociativeCommutativePatternMatching.jl" class="md-heading">AssociativeCommutativePatternMatching.jl<a href="#AssociativeCommutativePatternMatching.jl" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
+<p><a href="https://rawcdn.githack.com/jverzani/AssociativeCommutativePatternMatching.jl/7c41935f0d02fcb2acea22ba1ea4aa6df2ed596d/benchmark/matching/results/matching_comparison.html"><figure class="md-figure">
+<img src="https://img.shields.io/badge/pattern%20matching%2C%20matched%20of%2062-ACPM%2054%20%C2%B7%20SymbolicUtils%2046-2f8a4c" alt="Pattern matching, cases matched of 62: ACPM 54, SymbolicUtils 46" loading="lazy">
+<figcaption>Pattern matching, cases matched of 62: ACPM 54, SymbolicUtils 46</figcaption>
+</figure>
+</a></p>
 <p>This package matches <em>patterns</em>, expressions with wildcards such as <code class="md-code-inline">~x</code>, against <em>subjects</em>. A subject may be a Julia <code class="md-code-inline">Expr</code> or a term of a symbolic package implementing <a href="https://github.com/JuliaSymbolics/TermInterface.jl">TermInterface</a>, such as SymEngine, SymbolicUtils or SimpleExpressions. The package depends only on the lightweight <code class="md-code-inline">TermInterface</code> and <code class="md-code-inline">Combinatorics</code> packages.</p>
 <p>A match, or substitution, <code class="md-code-inline">σ</code> maps the names of the wildcards to parts of the subject, so that substituting <code class="md-code-inline">σ</code> into the pattern gives back the subject.</p>
 <p>There are two matchers, which share the pattern language, the rules, and the rewriting described on this page:</p>
@@ -226,9 +231,9 @@ Base.ImmutableDict{Symbol, Any} with 2 entries:
   :n =&gt; 1
 
 julia&gt; ACPM._eachmatch(:(~!a * sin(~!b * ~x + ~!c)^(~!m)), :(sin(2x))) |&gt; collect
-2-element Vector{Any}:
- Base.ImmutableDict{Symbol, Any}(:b =&gt; 2, :x =&gt; :x, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)
- Base.ImmutableDict{Symbol, Any}(:b =&gt; :x, :x =&gt; 2, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)</code></pre>
+2-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:b =&gt; 2, :x =&gt; :x, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)
+ Base.ImmutableDict(:b =&gt; :x, :x =&gt; 2, :c =&gt; 0, :m =&gt; 1, :a =&gt; 1)</code></pre>
 </div>
 <p>(As <code class="md-code-inline">2x</code> is a commutative product, <code class="md-code-inline">~!b * ~x</code> matches it both ways.)</p>
 <h3 id="Segments" class="md-heading">Segments<a href="#Segments" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
@@ -478,6 +483,6 @@ julia&gt; length(ACPM._ceachmatch(:(f(~x, ~y)), :(f(a, b))))
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=ebe7b28e"></script>
+  <script src="./assets/materialdocs.js?v=394f7a0e"></script>
 </body>
 </html>

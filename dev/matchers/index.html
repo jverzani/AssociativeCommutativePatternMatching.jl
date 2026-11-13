@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The two matchers — AssociativeCommutativePatternMatching Documentation</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=44fa3b5a">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=c072e833">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap">
   <meta name="title" content="The two matchers — AssociativeCommutativePatternMatching Documentation">
   <meta property="og:title" content="The two matchers — AssociativeCommutativePatternMatching Documentation">
@@ -52,7 +52,7 @@
       <article class="md-article">
       <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="github.com/jverzani/AssociativeCommutativePatternMatching.jl.git" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
 <h1 id="The-two-matchers" class="md-heading">The two matchers<a href="#The-two-matchers" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
-<p>The two matchers share the pattern language, guards, rules and rewriting described in <a href="../#AssociativeCommutativePatternMatching.jl">AssociativeCommutativePatternMatching.jl</a>. This page describes what is particular to each. In short though the main difference is with segment variables where the associative/commutative matcher (<code class="md-code-inline">_eachmatch</code>) takes longer but is thorough, whereas <code class="md-code-inline">_ceachmatch</code> is content with finding a quicker match.</p>
+<p>The two matchers share the pattern language, guards, rules and rewriting described in <a href="../#AssociativeCommutativePatternMatching.jl">AssociativeCommutativePatternMatching.jl</a>. This page describes what is particular to each. In short, the main difference is associativity: with <code class="md-code-inline">_eachmatch</code> a slot in an associative operation may take several arguments, while <code class="md-code-inline">_ceachmatch</code> uses commutativity only, and is faster.</p>
 <h2 id="The-associative-commutative-matcher" class="md-heading">The associative-commutative matcher<a href="#The-associative-commutative-matcher" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p><code class="md-code-inline">_eachmatch</code> and <code class="md-code-inline">_match</code> implement the algorithm of <a href="https://arxiv.org/abs/1705.00907">Non-linear Associative-Commutative Many-to-One Pattern Matching with Sequence Variables</a> by Manuel Krebber through Chapter 3 (only the one-to-one matching), referred to as MatchPy. Operations may be associative and/or commutative; the algorithm allows for these to be separate (as happens with matrix multiplication).</p>
 <p>The matches are returned as a lazy iterator, which allocates little until it is iterated, e.g. with <code class="md-code-inline">collect</code> or <code class="md-code-inline">first</code>.</p>
@@ -89,12 +89,18 @@ Base.ImmutableDict{Symbol, Any} with 1 entry:
   :x =&gt; :(x + p)</code></pre>
 </div>
 <h3 id="Segments" class="md-heading">Segments<a href="#Segments" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
-<p>When several segments share the arguments of an operation, only one way of dividing the arguments among them is found, rather than every way:</p>
+<p>When several segments share the arguments of an operation, every way of dividing the arguments among them is found, as with <code class="md-code-inline">_eachmatch</code>: under an operation which is not commutative the segments take consecutive arguments, and under a commutative one any of them. <code class="md-code-inline">_cmatch</code> stops at the first. Segments are bound to tuples:</p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-julia-repl">julia&gt; ACPM._ceachmatch(:(f(~~x, ~~y)), :(f(a, b, c)))
-1-element Vector{Base.ImmutableDict{Symbol, Any}}:
- Base.ImmutableDict(:y =&gt; (), :x =&gt; (:a, :b, :c))</code></pre>
+4-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:y =&gt; (:a, :b, :c), :x =&gt; ())
+ Base.ImmutableDict(:y =&gt; (:b, :c), :x =&gt; (:a,))
+ Base.ImmutableDict(:y =&gt; (:c,), :x =&gt; (:a, :b))
+ Base.ImmutableDict(:y =&gt; (), :x =&gt; (:a, :b, :c))
+
+julia&gt; length(ACPM._ceachmatch(:(~~x + ~~y), :(a + b + c)))
+8</code></pre>
 </div>
 <h3 id="Powers-written-differently" class="md-heading">Powers written differently<a href="#Powers-written-differently" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
 <p>A power may be written in several ways, and a symbolic package may store one way as another, e.g. <code class="md-code-inline">1/x</code> as <code class="md-code-inline">x^-1</code>. A pattern for a power also matches <code class="md-code-inline">sqrt(u)</code> as <code class="md-code-inline">u^(1//2)</code>, <code class="md-code-inline">exp(u)</code> as <code class="md-code-inline">ℯ^u</code>, <code class="md-code-inline">1/u</code> as <code class="md-code-inline">u^-1</code>, and a quotient as a product with a negative power:</p>
@@ -154,6 +160,6 @@ Base.ImmutableDict{Symbol, Any} with 1 entry:
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=44fa3b5a"></script>
+  <script src="../assets/materialdocs.js?v=c072e833"></script>
 </body>
 </html>
