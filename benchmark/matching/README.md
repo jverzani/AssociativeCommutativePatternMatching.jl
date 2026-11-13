@@ -74,6 +74,15 @@ numbers quoted in the findings (spans such as `med-sj`, `t11-cc`, `t40ac`).
 The "What stands out" section is otherwise written by hand in
 `template.html`; check it against new results.
 
+The package README and the docs' home page (`docs/src/index.md`) have a
+badge comparing the number of cases matched by `ac` (`_eachmatch`) and `su`
+(SymbolicUtils' `@rule`). It links to the page through rawcdn.githack.com at a
+commit hash (githack caches each URL permanently, so a branch name would keep
+showing the first version it saw). After a run, commit and push the page, then
+put that commit's hash in the link (README.md and docs/src/index.md). It is a
+static badge: after a run that changes these numbers, update them in the
+badge URL and its alt text, in both places.
+
 ## Results so far
 
 Cases matched (of 62) and the first-match median in µs. Times are on one

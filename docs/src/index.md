@@ -9,6 +9,8 @@ end
 
 # AssociativeCommutativePatternMatching.jl
 
+[![Pattern matching, cases matched of 62: ACPM 54, SymbolicUtils 46](https://img.shields.io/badge/pattern%20matching%2C%20matched%20of%2062-ACPM%2054%20%C2%B7%20SymbolicUtils%2046-2f8a4c)](https://rawcdn.githack.com/jverzani/AssociativeCommutativePatternMatching.jl/7c41935f0d02fcb2acea22ba1ea4aa6df2ed596d/benchmark/matching/results/matching_comparison.html)
+
 This package matches *patterns*, expressions with wildcards such as `~x`, against *subjects*. A subject may be a Julia `Expr` or a term of a symbolic package implementing [TermInterface](https://github.com/JuliaSymbolics/TermInterface.jl), such as SymEngine, SymbolicUtils or SimpleExpressions. The package depends only on the lightweight `TermInterface` and `Combinatorics` packages.
 
 A match, or substitution, `σ` maps the names of the wildcards to parts of the subject, so that substituting `σ` into the pattern gives back the subject.
