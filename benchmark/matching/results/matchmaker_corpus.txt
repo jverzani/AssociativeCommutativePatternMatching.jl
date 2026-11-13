@@ -2,11 +2,11 @@ MatchMaker 1.0.0 test corpora through AssociativeCommutativePatternMatching 1.1.
 ok = same set of distinct matches as MatchMaker's expected answer (or same count / same yes-no)
 
 suite          cases transl.  mm ok  ac ok   c ok  med mm  med ac  med cc  ac/mm  cc/mm
-matchpy          355     315    315    311    314    2.32    4.18    1.75   1.36   0.44
-symbolicutils     48      48     48     43     45    2.75    10.3    0.77   3.21   0.23
-sympy             75      75     75     75     75    2.13    7.27    1.36   2.63    0.5
-metatheory        26      26     26     26     26    3.59    6.59     5.9   2.14   1.68
-all              504     464    464    455    460    2.36    4.68    1.61   1.69   0.46
+matchpy          355     315    315    311    314    2.71    4.89    1.96   1.42   0.45
+symbolicutils     48      48     48     43     45    3.15   14.07     1.0   3.44   0.24
+sympy             75      75     75     75     75    2.56    8.42     1.5   2.44   0.45
+metatheory        26      26     26     26     26    4.31     7.1    4.19    2.1   1.29
+all              504     464    464    455    460    2.85    5.26    1.73   1.73   0.45
 
 times: µs per call for all matches; mm = matchall (subject DAG built per call), ac = _eachmatch, cc = _ceachmatch compiled;
 ACPM runs on Expr subjects here. ac/mm, cc/mm are geometric means of the per-case ratios.

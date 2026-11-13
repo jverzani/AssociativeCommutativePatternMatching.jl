@@ -2,13 +2,18 @@
 # Matches each pattern of cases.jl against its subject, a SymbolicUtils term,
 # with four matchers, and writes results/matching.json (read by build.jl):
 #   ac  AssociativeCommutativePatternMatching._eachmatch (all matches, lazily)
+#   acc the same, with the pattern compiled by `compile_eachmatch`, as `@acrule` does
 #   c   AssociativeCommutativePatternMatching._ceachmatch (a vector of matches)
 #   cc  the same, with the pattern compiled by `compile_pattern`, as `@rule` does
 #   su  SymbolicUtils @rule; all matches are found by a continuation that
 #       records the bindings and returns `nothing`, so the matcher backtracks
 #   si  SymbolicIntegration's rule2.jl, `check_expr_r`, which returns one match
+#   mm  MatchMaker, the pattern rewritten with its markers and compiled once
+#   sj  SymJ's `pattern`, `match` and `eachmatch`; its subjects are SymJ terms,
+#       built from the same expressions
 const T_START = time()
 using SymbolicUtils, SymbolicIntegration, AssociativeCommutativePatternMatching, MatchMaker
+import SymJ # `import`: SymJ exports names SymbolicUtils also has, e.g. @syms
 const ACPM = AssociativeCommutativePatternMatching
 const SI = SymbolicIntegration
 
@@ -23,13 +28,18 @@ const CAP = 5000 # stop collecting matches after this many
 const VARS = Dict(:x => x, :y => y, :z => z, :a => a, :b => b, :c => c, :t => t)
 const VALS = Dict(x => 0.37, y => 0.59, z => 0.71, a => 1.13, b => 1.29, c => 1.47, t => 0.83)
 
-function build(ex)
+# SymJ's variables and values
+const SJVARS = Dict(k => SymJ.Sym(k) for k in keys(VARS))
+const SJVALS = Dict(SJVARS[k] => VALS[v] for (k, v) in VARS)
+
+function build(ex, vars = VARS)
     m = Module()
-    for (k, v) in VARS
+    for (k, v) in vars
         Core.eval(m, :(const $k = $v))
     end
     Core.eval(m, ex)
 end
+sjbuild(ex) = build(ex, SJVARS)
 
 # ---- a match as sorted pairs; segments as vectors; sentinels dropped
 function normal(σ)
@@ -47,6 +57,12 @@ first_or_nothing(itr) = (for σ in itr; return σ; end; nothing)
 
 ac_all(p, s) = collect(Iterators.take(ACPM._eachmatch(p, s), CAP))
 ac_first(p, s) = ACPM._match(p, s)
+
+# the pattern compiled once, as `@acrule` does
+const AC_COMPILED = Dict{Any,Any}()
+ac_compiled(p) = get!(() -> ACPM.compile_eachmatch(p), AC_COMPILED, p)
+acc_all(p, s) = collect(Iterators.take(ACPM._eachmatch(ac_compiled(p), s), CAP))
+acc_first(p, s) = ACPM._match(ac_compiled(p), s)
 c_all(p, s) = ACPM._ceachmatch(p, s)
 c_first(p, s) = ACPM._cmatch(p, s)
 
@@ -133,8 +149,18 @@ mm_dict(σ) = σ === nothing ? nothing : Dict{Symbol,Any}(nameof(k) => v for (k,
 mm_all(p, s) = map(mm_dict, MatchMaker.matchall(mm_compiled(p), s))
 mm_first(p, s) = mm_dict(MatchMaker.match(mm_compiled(p), s))
 
-const METHODS = [("ac", ac_all, ac_first), ("c", c_all, c_first), ("cc", cc_all, cc_first),
-                 ("su", su_all, su_first), ("si", si_all, si_first), ("mm", mm_all, mm_first)]
+# SymJ: the pattern, in the same syntax, compiled once by `SymJ.pattern`; its
+# `eachmatch` returns the distinct matches. Guards are looked up in Main, then Base.
+const SJ_COMPILED = Dict{Any,Any}()
+sj_compiled(p) = get!(() -> SymJ.pattern(p), SJ_COMPILED, p)
+sj_all(p, s) = eachmatch(sj_compiled(p), s)
+sj_first(p, s) = match(sj_compiled(p), s)
+
+# (key, all matches, first match, whether the subject is a SymJ term)
+const METHODS = [("ac", ac_all, ac_first, false), ("acc", acc_all, acc_first, false),
+                 ("c", c_all, c_first, false), ("cc", cc_all, cc_first, false),
+                 ("su", su_all, su_first, false), ("si", si_all, si_first, false),
+                 ("mm", mm_all, mm_first, false), ("sj", sj_all, sj_first, true)]
 
 # ---- verify a match: put it into the pattern and compare numerically
 struct Splat; vs::Vector{Any}; end
@@ -143,8 +169,8 @@ name(p) = (q = p.args[2]; q isa Expr && q.head == :(::) ? name(Expr(:call, :~, q
 isslotexpr(p) = p isa Expr && p.head == :call && p.args[1] == :~ && length(p.args) == 2
 issegexpr(p) = isslotexpr(p) && (q = p.args[2]; q isa Expr && q.head == :call && q.args[1] == :~)
 const EMPTY = Dict(:+ => 0, :* => 1)
-function instantiate(p, σ)
-    p isa Symbol && return p == :ℯ ? ℯ : VARS[p]
+function instantiate(p, σ, vars = VARS)
+    p isa Symbol && return p == :ℯ ? ℯ : vars[p]
     p isa Expr || return p
     if isslotexpr(p)
         v = σ[name(p)]
@@ -154,7 +180,7 @@ function instantiate(p, σ)
     f = isslotexpr(op) ? σ[name(op)] : getfield(Base, op)
     args = Any[]
     for q in p.args[2:end]
-        v = instantiate(q, σ)
+        v = instantiate(q, σ, vars)
         v isa Splat ? append!(args, v.vs) : push!(args, v)
     end
     isempty(args) && return EMPTY[op]
@@ -166,10 +192,14 @@ function numval(ex)
     v = SymbolicUtils.unwrap_const(SymbolicUtils.substitute(ex, VALS; fold = Val(true)))
     isa(v, Number) ? float(v) : nothing
 end
+function numval(ex::SymJ.Sym)
+    v = SymJ.N(SymJ.subs(ex, SJVALS...))
+    v isa Number ? float(v) : (v = SymJ.N(v); v isa Number ? float(v) : nothing)
+end
 function verify(p, s, σ)
     try
         d = Dict(normal(σ))
-        u, v = numval(instantiate(p, d)), numval(s)
+        u, v = numval(instantiate(p, d, s isa SymJ.Sym ? SJVARS : VARS)), numval(s)
         (u === nothing || v === nothing) && return "unchecked"
         abs(u - v) <= 1e-8 * max(1, abs(v)) ? "ok" : "wrong"
     catch
@@ -219,11 +249,12 @@ showmatch(ps) = isempty(ps) ? "(empty)" : join(("$k => $(showval(v))" for (k, v)
 
 const T_LOADED = time()
 results = map(enumerate(CASES)) do (i, (group, pat, subex, note))
-    s = build(subex)
-    @info "case $i: $pat ~ $s"
+    su_s, sj_s = build(subex), sjbuild(subex)
+    @info "case $i: $pat ~ $su_s"
     row = Dict{String,Any}("i" => i, "group" => group, "pattern" => string(pat), "subject" => string(subex),
-                           "stored" => string(s), "note" => note)
-    for (key, all, first1) in METHODS
+                           "stored" => string(su_s), "stored_sj" => string(sj_s), "note" => note)
+    for (key, all, first1, sj) in METHODS
+        s = sj ? sj_s : su_s
         r = Dict{String,Any}()
         try # the first match, as a rule would use it
             σ1 = first1(pat, s)
@@ -253,13 +284,13 @@ end
 
 versions = Dict("Julia" => string(VERSION))
 for (k, m) in Base.loaded_modules
-    k.name in ("AssociativeCommutativePatternMatching", "SymbolicUtils", "SymbolicIntegration", "MatchMaker") || continue
+    k.name in ("AssociativeCommutativePatternMatching", "SymbolicUtils", "SymbolicIntegration", "MatchMaker", "SymJ") || continue
     versions[k.name] = string(pkgversion(m))
 end
 commit = try
-    c = readchomp(`git -C $HERE rev-parse --short HEAD`)
+    rev = readchomp(`git -C $HERE rev-parse --short HEAD`)
     dirty = readchomp(`git -C $HERE status --porcelain --untracked-files=no -- ../../src`)
-    c * (isempty(dirty) ? "" : " (with uncommitted changes)")
+    rev * (isempty(dirty) ? "" : " (with uncommitted changes)")
 catch
     "unknown"
 end
