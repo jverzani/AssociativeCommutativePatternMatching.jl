@@ -8,7 +8,7 @@
 #       records the bindings and returns `nothing`, so the matcher backtracks
 #   si  SymbolicIntegration's rule2.jl, `check_expr_r`, which returns one match
 const T_START = time()
-using SymbolicUtils, SymbolicIntegration, AssociativeCommutativePatternMatching
+using SymbolicUtils, SymbolicIntegration, AssociativeCommutativePatternMatching, MatchMaker
 const ACPM = AssociativeCommutativePatternMatching
 const SI = SymbolicIntegration
 
@@ -76,8 +76,65 @@ function si_first(p, s)
 end
 si_all(p, s) = (σ = si_first(p, s); σ === nothing ? Any[] : Any[σ])
 
+# MatchMaker: the @rule-style pattern is rewritten with its markers, `~x` as
+# `slot(x)`, `~~x` as a `segment` with no minimum, `~~~x` with minimum 1,
+# `~!x` as `optional(x)` with the identity of its head as default, and a guard
+# as a `slotspec` predicate (MatchMaker passes it a term, so constants are
+# unwrapped first). The pattern is compiled once.
+const MM_HEADS = Dict{Symbol,Any}(:+ => +, :* => *, :^ => ^, :/ => /, :sin => sin, :cos => cos,
+                                  :exp => exp, :log => log, :sqrt => sqrt)
+mm_guard(f) = t -> (v = SymbolicUtils.unwrap_const(t); v isa Number && f(v))
+const MM_VS = Dict{SymbolicUtils.BasicSymbolic{SymbolicUtils.SymReal},MatchMaker.VarSpec.Type}
+function mm_pattern(ex)
+    vars = MM_VS()
+    mmsym(n) = SymbolicUtils.Sym{SymbolicUtils.SymReal}(n; type = Number)
+    fnsym(n) = SymbolicUtils.Sym{SymbolicUtils.SymReal}(n; type = SymbolicUtils.FnType{Tuple{Vararg{Number}},Number,Nothing})
+    function walk(e, parent)
+        e isa Symbol && return e == :ℯ ? ℯ : VARS[e]
+        e isa Expr || return e
+        if isslotexpr(e)
+            q = e.args[2]
+            if issegexpr(e)
+                r = q.args[2]
+                plus = r isa Expr && isslotexpr(r) # ~~~x
+                v = mmsym(plus ? r.args[2] : r)
+                vars[v] = MatchMaker.segmentspec(nothing; min = plus ? 1 : 0)
+                return MatchMaker.segment(v)
+            end
+            opt = q isa Expr && q.head == :call && q.args[1] == :!
+            opt && (q = q.args[2])
+            guard = q isa Expr && q.head == :(::) ? getfield(Base, q.args[2]) : nothing
+            n = guard === nothing ? q : q.args[1]
+            v = mmsym(n)
+            if opt
+                d = parent === (+) ? 0 : 1
+                vars[v] = MatchMaker.slotspec(guard === nothing ? nothing : mm_guard(guard); default = d)
+                return MatchMaker.optional(v)
+            end
+            guard === nothing || (vars[v] = MatchMaker.slotspec(mm_guard(guard)))
+            return MatchMaker.slot(v)
+        end
+        op = e.args[1]
+        if isslotexpr(op) # an operation as a slot
+            F = MatchMaker.slot(fnsym(op.args[2]))
+            return F(map(a -> walk(a, nothing), e.args[2:end])...)
+        end
+        f = MM_HEADS[op]
+        args = map(a -> walk(a, f), e.args[2:end])
+        length(args) == 1 && f in (+, *) && return SymbolicUtils.term(f, args...)
+        f(args...)
+    end
+    p = walk(ex, nothing)
+    MatchMaker.compile_pattern(p; vars)
+end
+const MM_COMPILED = Dict{Any,Any}()
+mm_compiled(p) = get!(() -> mm_pattern(p), MM_COMPILED, p)
+mm_dict(σ) = σ === nothing ? nothing : Dict{Symbol,Any}(nameof(k) => v for (k, v) in σ)
+mm_all(p, s) = map(mm_dict, MatchMaker.matchall(mm_compiled(p), s))
+mm_first(p, s) = mm_dict(MatchMaker.match(mm_compiled(p), s))
+
 const METHODS = [("ac", ac_all, ac_first), ("c", c_all, c_first), ("cc", cc_all, cc_first),
-                 ("su", su_all, su_first), ("si", si_all, si_first)]
+                 ("su", su_all, su_first), ("si", si_all, si_first), ("mm", mm_all, mm_first)]
 
 # ---- verify a match: put it into the pattern and compare numerically
 struct Splat; vs::Vector{Any}; end
@@ -196,7 +253,7 @@ end
 
 versions = Dict("Julia" => string(VERSION))
 for (k, m) in Base.loaded_modules
-    k.name in ("AssociativeCommutativePatternMatching", "SymbolicUtils", "SymbolicIntegration") || continue
+    k.name in ("AssociativeCommutativePatternMatching", "SymbolicUtils", "SymbolicIntegration", "MatchMaker") || continue
     versions[k.name] = string(pkgversion(m))
 end
 commit = try
