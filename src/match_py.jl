@@ -119,18 +119,19 @@ struct _SeqMatches{E,S,P,T,F}
     n::Int
 end
 Base.IteratorSize(::Type{<:_SeqMatches}) = Base.SizeUnknown()
+Base.IteratorEltype(::Type{<:_SeqMatches}) = Base.EltypeUnknown() # as the lazy chain it replaced
 
 # state: (state of exps, matches for the current distribution, their state)
 function Base.iterate(it::_SeqMatches, st = (_Start(), (), _Start()))
-    est, inner, ist = st
+    estate, inner, istate = st
     while true
-        r = ist isa _Start ? iterate(inner) : iterate(inner, ist)
-        r === nothing || return (r[1], (est, inner, r[2]))
-        re = est isa _Start ? iterate(it.exps) : iterate(it.exps, est)
+        r = istate isa _Start ? iterate(inner) : iterate(inner, istate)
+        r === nothing || return (r[1], (estate, inner, r[2]))
+        re = estate isa _Start ? iterate(it.exps) : iterate(it.exps, estate)
         re === nothing && return nothing
-        ks, est = re
+        ks, estate = re
         θ′ = _match_sequence1(it.ss, it.ps, it.fₐ, it.θ, it.n, ks)
-        inner, ist = θ′ === nothing ? () : θ′, _Start()
+        inner, istate = θ′ === nothing ? () : θ′, _Start()
     end
 end
 

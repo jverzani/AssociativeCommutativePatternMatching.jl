@@ -144,9 +144,9 @@ Base.ImmutableDict{Symbol, Any} with 2 entries:
   :n => 1
 
 julia> ACPM._eachmatch(:(~!a * sin(~!b * ~x + ~!c)^(~!m)), :(sin(2x))) |> collect
-2-element Vector{Any}:
- Base.ImmutableDict{Symbol, Any}(:b => 2, :x => :x, :c => 0, :m => 1, :a => 1)
- Base.ImmutableDict{Symbol, Any}(:b => :x, :x => 2, :c => 0, :m => 1, :a => 1)
+2-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:b => 2, :x => :x, :c => 0, :m => 1, :a => 1)
+ Base.ImmutableDict(:b => :x, :x => 2, :c => 0, :m => 1, :a => 1)
 ```
 
 (As `2x` is a commutative product, `~!b * ~x` matches it both ways.)

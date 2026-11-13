@@ -8,7 +8,7 @@ end
 
 # The two matchers
 
-The two matchers share the pattern language, guards, rules and rewriting described in [AssociativeCommutativePatternMatching.jl](@ref). This page describes what is particular to each. In short though the main difference is with segment variables where the associative/commutative matcher (`_eachmatch`) takes longer but is thorough, whereas `_ceachmatch` is content with finding a quicker match.
+The two matchers share the pattern language, guards, rules and rewriting described in [AssociativeCommutativePatternMatching.jl](@ref). This page describes what is particular to each. In short, the main difference is associativity: with `_eachmatch` a slot in an associative operation may take several arguments, while `_ceachmatch` uses commutativity only, and is faster.
 
 ## The associative-commutative matcher
 
@@ -59,12 +59,18 @@ Base.ImmutableDict{Symbol, Any} with 1 entry:
 
 ### Segments
 
-When several segments share the arguments of an operation, only one way of dividing the arguments among them is found, rather than every way:
+When several segments share the arguments of an operation, every way of dividing the arguments among them is found, as with `_eachmatch`: under an operation which is not commutative the segments take consecutive arguments, and under a commutative one any of them. `_cmatch` stops at the first. Segments are bound to tuples:
 
 ```jldoctest matchers
 julia> ACPM._ceachmatch(:(f(~~x, ~~y)), :(f(a, b, c)))
-1-element Vector{Base.ImmutableDict{Symbol, Any}}:
+4-element Vector{Base.ImmutableDict{Symbol, Any}}:
+ Base.ImmutableDict(:y => (:a, :b, :c), :x => ())
+ Base.ImmutableDict(:y => (:b, :c), :x => (:a,))
+ Base.ImmutableDict(:y => (:c,), :x => (:a, :b))
  Base.ImmutableDict(:y => (), :x => (:a, :b, :c))
+
+julia> length(ACPM._ceachmatch(:(~~x + ~~y), :(a + b + c)))
+8
 ```
 
 ### Powers written differently
