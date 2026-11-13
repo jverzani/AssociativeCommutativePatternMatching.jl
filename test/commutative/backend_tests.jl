@@ -23,11 +23,22 @@ function backend_tests()
         @test σ[:x] == :a && collect(σ[:y]) == [:b, :c]
         # segments bind to tuples, as in the commutative case
         @test σ[:y] isa Tuple
-        # with no other arguments, segments are filled greedily
+        # with no other arguments, segments take every split into runs
         σs = eachm(:(f(~~x, ~~y)), :(f(a, b, c)))
-        @test length(σs) == 1
+        @test length(σs) == 4
         @test all(σ -> [σ[:x]..., σ[:y]...] == [:a, :b, :c], σs)
+        σs = eachm(:(f(~~~x, ~~~y)), :(f(a, b, c)))
+        @test length(σs) == 2
+        @test has_match(σs, :x => (:a,), :y => (:b, :c)) && has_match(σs, :x => (:a, :b), :y => (:c,))
         @test isempty(eachm(:(f(~~~x, ~y, ~~~z)), :(f(a, b))))
+        # a repeated segment takes the same run
+        @test binds(only(eachm(:(f(~~x, ~~x)), :(f(a, b, a, b)))), :x => (:a, :b))
+        @test isempty(eachm(:(f(~~x, ~~x)), :(f(a, b, b, a))))
+        @test binds(only(eachm(:(f(~~x, b, ~~x)), :(f(a, b, a)))), :x => (:a,))
+
+        # a repeated segment in a sum
+        σs = eachm(:(~~x + ~y + ~~x), :(a + b + a))
+        @test has_match(σs, :x => (:a,), :y => :b)
 
         # guards on segments of a non-commutative operation
         @test binds(matchone(:(f(~x, ~~y::(u -> length(u) == 2))), :(f(a, b, c))),

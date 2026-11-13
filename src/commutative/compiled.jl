@@ -205,8 +205,8 @@ function _cm_rest(c::CompiledPattern, @nospecialize(data), σs::𝑀, once::Bool
     neim && (arg_data = _data_as_powers(data))
     opₛ != c.op && !neim && return NO_MATCH
 
-    c.anyseg && return has_any_segment(opₛ, arg_data, c.op, c.argexprs, σs)
-    c.anyplus && return has_any_plus(opₛ, arg_data, c.op, c.argexprs, σs)
+    c.anyseg && return has_any_segment(opₛ, arg_data, c.op, c.argexprs, σs, once)
+    c.anyplus && return has_any_plus(opₛ, arg_data, c.op, c.argexprs, σs, once)
 
     length(arg_data) != length(c.args) && return MatchDict[]
     if c.commutative
@@ -222,8 +222,8 @@ function _c_ceoaa(c::CompiledPattern, arg_data, σs::𝑀, once::Bool)::𝑀
         iszero(c.nseg) && c.nslot != length(arg_data) && return NO_MATCH
     end
     σs == NO_MATCH && return NO_MATCH
-    c.anyseg && return has_any_segment(nothing, arg_data, nothing, c.argexprs, σs)
-    c.anyplus && return has_any_plus(nothing, arg_data, nothing, c.argexprs, σs)
+    c.anyseg && return has_any_segment(nothing, arg_data, nothing, c.argexprs, σs, once)
+    c.anyplus && return has_any_plus(nothing, arg_data, nothing, c.argexprs, σs, once)
     σ′s = σs
     n = min(length(arg_data), length(c.args))
     for i ∈ 1:n

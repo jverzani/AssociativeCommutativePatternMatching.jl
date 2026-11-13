@@ -25,7 +25,7 @@ A pattern to match against has wildcards. We have:
 
 A pattern can only have one wildcard of a given name (no ~x + ~~x, say).
 
-# test cases -- AssociativeCommutativePatternMatching uses associativity in its considerations (2,4) and full enumeration when there are multiple segments (6, 7). The Rule1 (from SymbolicIntegration) doesn't do segments right (in my mind)
+# test cases -- AssociativeCommutativePatternMatching uses associativity in its considerations (2,4). Both enumerate every way of sharing the arguments among several segments (6, 7): under a commutative operation any sub-multiset, under another operation contiguous runs. The Rule1 (from SymbolicIntegration) doesn't do segments right (in my mind)
 
                                       # ACPM  | Rule2 | Rule1 (match only)
 1. eachmatch(:(~x), a + b + c)        # 1 | 1 | yes
@@ -33,8 +33,8 @@ A pattern can only have one wildcard of a given name (no ~x + ~~x, say).
 3. eachmatch(:(~x + ~!y), a + b + c)  # 6 | 1 | yes
 4. eachmatch(:(~x + ~~y), a+b+c)      # 7⁺| 4 | no # ⁺ ~x accts like ~~~x
 5. eachmatch(:(~x + ~~~y), a+b+c)     # 6 | 3 | not
-6. eachmatch(:(~~x + ~~y), a+b+c)     # 8 | 1 | no
-7. eachmatch(:(~~~x + ~~~y), a+b+c)   # 6 | 1 | no
+6. eachmatch(:(~~x + ~~y), a+b+c)     # 8 | 8 | no
+7. eachmatch(:(~~~x + ~~~y), a+b+c)   # 6 | 6 | no
 
 =#
 
@@ -146,12 +146,12 @@ function check_expr_r(@nospecialize(data), rule::Expr, σs::𝑀, once::Bool=fal
     # segments variables means number of arguments might not match
     if (any(is_segment, arg_rule))
         # @show :has_any
-        return has_any_segment(𝑜𝑝ₛ, arg_data, opᵣ, arg_rule,  σs)
+        return has_any_segment(𝑜𝑝ₛ, arg_data, opᵣ, arg_rule,  σs, once)
     end
 
     if (any(is_plus, arg_rule))
         # @show :has_plus, arg_data, arg_rule
-        return has_any_plus(𝑜𝑝ₛ, arg_data, opᵣ, arg_rule,  σs)
+        return has_any_plus(𝑜𝑝ₛ, arg_data, opᵣ, arg_rule,  σs, once)
     end
 
 
@@ -174,10 +174,10 @@ function ceoaa(@nospecialize(arg_data), arg_rule, σs::𝑀, once::Bool=false)::
     end
     σs == NO_MATCH && return NO_MATCH
     if (any(is_segment, arg_rule))
-        return has_any_segment(nothing, arg_data, nothing, arg_rule,  σs)
+        return has_any_segment(nothing, arg_data, nothing, arg_rule,  σs, once)
     end
     if (any(is_plus, arg_rule))
-        return has_any_plus(nothing, arg_data, nothing, arg_rule,  σs)
+        return has_any_plus(nothing, arg_data, nothing, arg_rule,  σs, once)
     end
     σ′s = σs
     n, i = min(length(arg_data), length(arg_rule)), 0
@@ -444,244 +444,220 @@ end
 _segment_guard(segpat, vals::Tuple) =
     !has_predicate(segpat) || _evalguard(get_predicate(segpat), vals)
 
+# `once`: stop at the first match, as `_cmatch` does
 function has_any_segment(𝑜𝑝ₛ, @nospecialize(arg_data),
-                         opᵣ, arg_rule, σs)
+                         opᵣ, arg_rule, σs, once::Bool=false)
     # @show :has_any_segment, arg_data, arg_rule
     σs == NO_MATCH && return NO_MATCH
     seg, notseg, seg_positions = _split_segments(arg_rule)
     # @show seg, notseg, seg_positions
     n,m = length(arg_data), length(notseg)
-    if m > n
-        return MatchDict[]
-    elseif m == 0
+    m > n && return MatchDict[]
+    if m == 0 && length(seg) == 1
+        # fast path for the overwhelmingly common single-segment case:
+        # the segment takes every argument
+        v = first(seg)
+        is_plus(v) && isempty(arg_data) && return MatchDict[]
+        var = varname(v)
+        vals = tuple(arg_data...)
+        _segment_guard(v, vals) || return MatchDict[]
         σ′s = MatchDict[]
-        if length(seg) == 1
-            # fast path for the overwhelmingly common single-segment case:
-            # avoid the general (and slightly more allocating) machinery
-            # below when there is nothing to distribute among multiple
-            # segments
-            v = first(seg)
-            is_plus(v) && isempty(arg_data) && return MatchDict[]
-            var = varname(v)
-            vals = tuple(arg_data...)
-            _segment_guard(v, vals) || return MatchDict[]
-            for σ ∈ σs
-                if haskey(σ, var)
-                    isequal(vals, σ[var]) && push!(σ′s, σ)
-                else
-                    push!(σ′s, match_dict(σ, var => vals))
-                end
-            end
-            return σ′s
-        end
-        # distribute all of arg_data among the segment variables: each
-        # `~~~`-style (is_plus) segment needs at least one value, so we
-        # greedily give one value to each plus segment and dump the rest
-        # into the first segment (see `_assign_segments_greedy`)
-        seg_is_plus = is_plus.(seg)
-        assignment = _assign_segments_greedy(tuple(arg_data...), seg_is_plus)
-        isnothing(assignment) && return MatchDict[]
         for σ ∈ σs
-            σ′ = σ
-            ok = true
-            for i ∈ eachindex(seg)
-                var = varname(seg[i])
-                _segment_guard(seg[i], assignment[i]) || (ok = false; break)
-                val = assignment[i]
-                if haskey(σ′, var)
-                    isequal(val, σ′[var]) || (ok = false; break)
-                else
-                    σ′ = match_dict(σ′, var => val)
-                end
+            if haskey(σ, var)
+                isequal(vals, σ[var]) && push!(σ′s, σ)
+            else
+                push!(σ′s, match_dict(σ, var => vals))
             end
-            ok && push!(σ′s, σ′)
-        end# XXX?
+        end
         return σ′s
-    elseif 0 < m ≤ n
-        σ′′s = MatchDict[]
-        if iscommutative(opᵣ)
-            # these only depend on opᵣ/notseg/seg, not on the subset `ind`
-            # chosen below, so compute them once rather than once per
-            # combination (there are C(n,m) combinations, which can be
-            # large)
-            pat′ = pterm(opᵣ, notseg) # can be an issue!
-            seg_varnames = varname.(seg)
-            seg_is_plus = is_plus.(seg)
-            # when there is more than one segment pattern (e.g.
-            # `~x + ~~y + ~~w`), the "leftover" values (`val` below) must be
-            # distributed among *all* of the segments, not just dumped into
-            # the first one with the rest forced to `()` -- that forced
-            # `()` is invalid whenever a later segment is `~~~`-style
-            # (is_plus, "one or more"). `_assign_segments_greedy` picks one
-            # valid distribution (not a full enumeration of every possible
-            # split) honoring each plus segment's "at least one" minimum.
-            for ind ∈ combinations(1:n, m)
-                # take m of the values and match
-                sub′ = sterm(𝑜𝑝ₛ, arg_data[ind])
-                # `val` depends only on `ind`/`arg_data`/`n`, not on σ or σ′,
-                # so compute it once per combination rather than once per
-                # (σ, σ′) pair below
-                val = length(ind) < n ?
-                    _tuple_without_indices(arg_data, ind, n) :
-                    ()
-                assignment = _assign_segments_greedy(val, seg_is_plus)
-                assignment === nothing && continue
-                for σ ∈ σs
-                    σ′s = check_expr_r(sub′, pat′, [σ])
-                    if σ′s != NO_MATCH
-                        # we found a match, assign the rest across the segments
-                        for σ′ ∈ σ′s
-                            τ = σ′
-                            ok = true
-                            for i ∈ eachindex(seg)
-                                svar = seg_varnames[i]
-                                sval = assignment[i]
-                                if haskey(τ, svar)
-                                    isequal(sval, τ[svar]) || (ok = false; break)
-                                else
-                                    _segment_guard(seg[i], assignment[i]) ||
-                                        (ok = false; break)
-                                    τ = match_dict(τ, svar => sval)
-                                end
-                            end
-                            ok && push!(σ′′s, τ)
-                        end
-                    end
-                end
-            end
-        else
-            # march over, use segment to slurp rest
-            # this takes some thinking.
-            # match ~a,~~b,~c,~~d against say l,m,n,o,p,q
-            # has l|()|m|(nopq) # n - nontsegs + 1 choices for first
-            #     l|(m)|n|(opq) # then ,,, + 1 for second (if more)
-            #     l|(mn)|o|(pq) # then ... + 1 for third (if more)
-            #     l|(mno)|p|(q)
-            #     l|(mnop)|q|()
-            nsegs = length(seg_positions)
-            k = length(arg_rule) - nsegs
-            n = length(arg_data) - k
-
-            σ′′s =  MatchDict[]
-            for α ∈ _compositions(n, nsegs)
-                σ′s = σs
-                j = 1 # index in data_rule
-                l = 1 # index in itr,
-                nomatch = false
-                for (i,pat) ∈ enumerate(arg_rule)
-                    nomatch && continue
-                    if l > nsegs || i != seg_positions[l]
-                        σ′s = check_expr_r(arg_data[j], pat, σ′s)
-                        σ′s == NO_MATCH && (nomatch = true)
-                        j = j + 1
-                    else
-                        a = α[l]
-                        l = l + 1
-                        # `~~~`-style (is_plus, "one or more") segments can
-                        # never be validly bound to an empty selection
-                        if a == 0 && is_plus(pat)
-                            nomatch = true
-                            continue
-                        end
-                        var = varname(pat)
-                        #value = view(arg_data,j:(j+a-1))
-                        value = tuple(arg_data[j:(j+a-1)]...)
-                        if !_segment_guard(pat, value)
-                            nomatch = true
-                            continue
-                        end
-                        σ′ = match_dict(var => value)
-                        σ′s = _merge_single(σ′s, σ′)
-                        σ′s == NO_MATCH && (nomatch = true)
-                        j = j + a
-                    end
-                end
-                σ′s == NO_MATCH && continue
-                !nomatch && append!(σ′′s, σ′s)
-            end
-            return isempty(σ′′s) ? NO_MATCH : σ′′s
-        end
-        if length(seg) > 0
-            # match all segments with (), then match the rest
-            σ′′′ = match_dict()
-            for v ∈ seg
-                if is_plus(v)
-                    σ′′′ = FAIL_DICT
-                    break
-                elseif !_segment_guard(v, ())
-                    σ′′′ = FAIL_DICT
-                    break
-                else
-                    σ′′′ = match_dict(σ′′′, varname(v) => ())
-                end
-            end
-            σ′′′s = merge_vectors_of_matches(σs, σ′′′)
-            sub′ = sterm(𝑜𝑝ₛ, arg_data)
-            pat′ = pterm(opᵣ, notseg)
-            σ′′′s = check_expr_r(sub′, pat′, σ′′′s)
-            σ′′′s != NO_MATCH && append!(σ′′s, σ′′′s)
-        end
-
-        return isempty(σ′′s) ? NO_MATCH : σ′′s
     end
-    return NO_MATCH
+
+    # an ordered operation: segments take contiguous runs of the arguments
+    iscommutative(opᵣ) || return _ordered_segments(arg_data, arg_rule, seg_positions, σs, once)
+
+    # a commutative operation: the arguments not matched by the other
+    # patterns are shared among the segments in every possible way
+    seg_varnames = varname.(seg)
+    seg_is_plus = is_plus.(seg)
+    σ′′s = MatchDict[]
+    if m == 0
+        _distribute_segments!(σ′′s, seg, seg_varnames, seg_is_plus, tuple(arg_data...), σs, once)
+        return σ′′s
+    end
+    # these only depend on opᵣ/notseg/seg, not on the subset `ind`
+    # chosen below, so compute them once rather than once per
+    # combination (there are C(n,m) combinations, which can be
+    # large)
+    pat′ = pterm(opᵣ, notseg) # can be an issue!
+    for ind ∈ combinations(1:n, m)
+        # take m of the values and match
+        sub′ = sterm(𝑜𝑝ₛ, arg_data[ind])
+        # the values left for the segments
+        val = length(ind) < n ?
+            _tuple_without_indices(arg_data, ind, n) :
+            ()
+        count(seg_is_plus) > length(val) && continue
+        for σ ∈ σs
+            σ′s = check_expr_r(sub′, pat′, [σ])
+            σ′s == NO_MATCH && continue
+            _distribute_segments!(σ′′s, seg, seg_varnames, seg_is_plus, val, σ′s, once)
+            once && !isempty(σ′′s) && return σ′′s
+        end
+    end
+    # match all segments with (), then match the rest
+    σ′′′ = match_dict()
+    for v ∈ seg
+        if is_plus(v) || !_segment_guard(v, ())
+            σ′′′ = FAIL_DICT
+            break
+        else
+            σ′′′ = match_dict(σ′′′, varname(v) => ())
+        end
+    end
+    σ′′′s = merge_vectors_of_matches(σs, σ′′′)
+    sub′ = sterm(𝑜𝑝ₛ, arg_data)
+    σ′′′s = check_expr_r(sub′, pat′, σ′′′s)
+    σ′′′s != NO_MATCH && (length(seg) == 1 ? append!(σ′′s, σ′′′s) : _append_unique!(σ′′s, σ′′′s))
+
+    return isempty(σ′′s) ? NO_MATCH : σ′′s
 end
 
-# Given a tuple/vector of leftover values and the precomputed `is_plus`
-# flags for a list of segment patterns (each either a "star" segment --
-# `~~x`, matches 0 or more -- or a "plus" segment -- `~~~x`, matches 1 or
-# more), find a single valid way to distribute the values among the
-# segments: give one value to each plus segment (to satisfy its "at least
-# one" requirement), then dump everything left over into the first
-# segment. Returns `nothing` if there are not enough values to give each
-# plus segment its required element.
-#
-# This is a cheap "first valid assignment" heuristic, not a full
-# enumeration of every possible split. When several segments appear
-# together there are in general many valid ways to distribute the values
-# (e.g. for `~~~x + ~~~y + ~~~w` against 3 values, any assignment of the
-# three values to the three variables, one each, is valid) but only one
-# such split is returned here.
-#
-# `is_plus_flags` is passed in (rather than recomputed from `segs` here)
-# since it is invariant across repeated calls in a hot loop (one call per
-# subset `ind` in `has_any_segment`'s commutative branch); the result is a
-# plain `Vector{Any}` of assigned values, positionally matching `segs`/
-# `is_plus_flags` (not `var => val` pairs), so the caller can reuse its
-# own precomputed segment varnames without recomputing them here.
-function _assign_segments_greedy(@nospecialize(vals), is_plus_flags)
-    k = length(is_plus_flags)
-    n = length(vals)
-    p = 0
-    for f ∈ is_plus_flags
-        f && (p += 1)
-    end
-    p > n && return nothing
+# Segments of an ordered operation take contiguous runs of the arguments.
+# match ~a,~~b,~c,~~d against say l,m,n,o,p,q
+# has l|()|m|(nopq) # n - nontsegs + 1 choices for first
+#     l|(m)|n|(opq) # then ,,, + 1 for second (if more)
+#     l|(mn)|o|(pq) # then ... + 1 for third (if more)
+#     l|(mno)|p|(q)
+#     l|(mnop)|q|()
+function _ordered_segments(@nospecialize(arg_data), arg_rule, seg_positions, σs, once::Bool=false)
+    nsegs = length(seg_positions)
+    k = length(arg_rule) - nsegs
+    n = length(arg_data) - k
 
-    assigned = Vector{Any}(undef, k)
-    idx = 1
-    for i ∈ 1:k
-        if is_plus_flags[i]
-            assigned[i] = (vals[idx],)
-            idx += 1
-        else
-            assigned[i] = ()
+    σ′′s =  MatchDict[]
+    for α ∈ _compositions(n, nsegs)
+        σ′s = σs
+        j = 1 # index in data_rule
+        l = 1 # index in itr,
+        nomatch = false
+        for (i,pat) ∈ enumerate(arg_rule)
+            nomatch && continue
+            if l > nsegs || i != seg_positions[l]
+                σ′s = check_expr_r(arg_data[j], pat, σ′s)
+                σ′s == NO_MATCH && (nomatch = true)
+                j = j + 1
+            else
+                a = α[l]
+                l = l + 1
+                # `~~~`-style (is_plus, "one or more") segments can
+                # never be validly bound to an empty selection
+                if a == 0 && is_plus(pat)
+                    nomatch = true
+                    continue
+                end
+                var = varname(pat)
+                value = tuple(arg_data[j:(j+a-1)]...)
+                if !_segment_guard(pat, value)
+                    nomatch = true
+                    continue
+                end
+                σ′ = match_dict(var => value)
+                σ′s = _merge_single(σ′s, σ′)
+                σ′s == NO_MATCH && (nomatch = true)
+                j = j + a
+            end
         end
+        σ′s == NO_MATCH && continue
+        !nomatch && append!(σ′′s, σ′s)
+        once && !isempty(σ′′s) && break
     end
-    if idx ≤ n
-        rest = vals[idx:end]
-        assigned[1] = (assigned[1]..., rest...)
-    end
-    return assigned
+    return isempty(σ′′s) ? NO_MATCH : σ′′s
 end
 
+# Every way to share the values `vals` among the segment patterns `seg` of a
+# commutative operation: each value goes to one segment (`who[j]` is the
+# segment of the jth value), a segment keeps its values in their order, a
+# `~~~` segment needs at least one, and a segment already bound must get the
+# same values. The matches extending each of `σs` are appended to `out`. For k
+# segments and r values there are k^r ways; r is small in practice. Equal
+# values give the same match in several ways, so then each is kept once. With
+# `once`, stop at the first match.
+function _distribute_segments!(out, seg, seg_varnames, seg_is_plus, @nospecialize(vals), σs, once::Bool=false)
+    k, r = length(seg), length(vals)
+    count(seg_is_plus) > r && return out
+    if k == 1 # one segment takes every value
+        _extend_segments!(out, seg, seg_varnames, (vals,), σs, false, once)
+        return out
+    end
+    dedupe = !once && _has_equal_values(vals) # the first match needs no check
+    parts = [Any[] for _ ∈ 1:k]
+    tups = Vector{Any}(undef, k)
+    who = ones(Int, r)
+    while true
+        ok = true
+        for i ∈ 1:k
+            seg_is_plus[i] || continue
+            any(==(i), who) || (ok = false; break)
+        end
+        if ok
+            foreach(empty!, parts)
+            for j ∈ 1:r
+                push!(parts[who[j]], vals[j])
+            end
+            for i ∈ 1:k
+                tups[i] = Tuple(parts[i])
+            end
+            _extend_segments!(out, seg, seg_varnames, tups, σs, dedupe, once)
+            once && !isempty(out) && return out
+        end
+        # the next assignment, counting in base k
+        j = 1
+        while j ≤ r && who[j] == k
+            who[j] = 1
+            j += 1
+        end
+        j > r && break
+        who[j] += 1
+    end
+    return out
+end
+
+# bind segment i to assignment[i] in each of σs, if they agree; append to `out`
+function _extend_segments!(out, seg, seg_varnames, assignment, σs, dedupe::Bool, once::Bool)
+    for σ ∈ σs
+        τ = σ
+        good = true
+        for i ∈ eachindex(seg)
+            a = assignment[i]
+            var = seg_varnames[i]
+            if haskey(τ, var)
+                isequal(a, τ[var]) || (good = false; break)
+            else
+                _segment_guard(seg[i], a) || (good = false; break)
+                τ = match_dict(τ, var => a)
+            end
+        end
+        good || continue
+        dedupe && any(t -> _isequal_match(t, τ), out) && continue
+        push!(out, τ)
+        once && return out
+    end
+    return out
+end
+
+function _has_equal_values(@nospecialize(vals))
+    for i ∈ eachindex(vals), j ∈ 1:(i - 1)
+        _cheap_isequal(vals[i], vals[j]) && return true
+    end
+    return false
+end
 
 
 function has_any_plus(𝑜𝑝ₛ, @nospecialize(arg_data),
-                      opᵣ, arg_rule, σs)
+                      opᵣ, arg_rule, σs, once::Bool=false)
     # @show :has_any_plus, arg_data, arg_rule
     has_any_segment(𝑜𝑝ₛ, arg_data,
-                      opᵣ, arg_rule, σs)
+                      opᵣ, arg_rule, σs, once)
 end
 @inline function _commutative_priority(pat)
     is_defslot(pat) && return 3
