@@ -12,16 +12,17 @@ struct Rule
     rhs::Any      # template, used for `Expr` subjects
     f::Function   # σ -> rhs, compiled where the rule was written
     associative::Bool # match with `_match` (true) or `_cmatch`
-    matcher::Union{Nothing, CompiledPattern} # lhs compiled, for `_cmatch`
+    matcher::Union{EachMatchPattern, CompiledPattern} # lhs compiled, for `_match` or `_cmatch`
 end
 # `f` is not a type parameter: with thousands of rules, a parameter would
 # mean compiling a method for calling each rule.
 Rule(lhs, rhs, f, associative) =
-    Rule(lhs, rhs, f, associative, associative ? nothing : compile_pattern(lhs))
+    Rule(lhs, rhs, f, associative, associative ? compile_eachmatch(lhs) : compile_pattern(lhs))
 Rule(lhs, rhs, f) = Rule(lhs, rhs, f, false)
 
 function (r::Rule)(sub)
-    σ = r.associative ? _match(r.lhs, sub) : _cmatch(r.matcher, sub)
+    m = r.matcher
+    σ = m isa EachMatchPattern ? _match(m, sub) : _cmatch(m, sub)
     σ === nothing && return nothing
     r.rhs === :~ && return σ # `lhs => ~` returns the match
     symtype(sub) === Expr ? _rewrite(σ, r.rhs, Expr) : r.f(σ)

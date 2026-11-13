@@ -1,0 +1,62 @@
+MatchMaker 1.0.0 test corpora through AssociativeCommutativePatternMatching 1.1.1
+ok = same set of distinct matches as MatchMaker's expected answer (or same count / same yes-no)
+
+suite          cases transl.  mm ok  ac ok   c ok  med mm  med ac  med cc  ac/mm  cc/mm
+matchpy          355     315    315    311    314    2.71    4.89    1.96   1.42   0.45
+symbolicutils     48      48     48     43     45    3.15   14.07     1.0   3.44   0.24
+sympy             75      75     75     75     75    2.56    8.42     1.5   2.44   0.45
+metatheory        26      26     26     26     26    4.31     7.1    4.19    2.1   1.29
+all              504     464    464    455    460    2.85    5.26    1.73   1.73   0.45
+
+times: µs per call for all matches; mm = matchall (subject DAG built per call), ac = _eachmatch, cc = _ceachmatch compiled;
+ACPM runs on Expr subjects here. ac/mm, cc/mm are geometric means of the per-case ratios.
+
+Not translated:
+  31  matchpy: cross-variable constraint
+  5  matchpy: default a under faₐ
+  4  matchpy: default a under facₐₘ
+
+Failures of _eachmatch:
+  matchpy [symbol wildcards]  faₐ(~(x::pred))  ~  faₐ(a)
+      want ["x => a"]
+      got  String[]
+  matchpy [symbol wildcards]  facₐₘ(~(sp::pred))  ~  facₐₘ(sp)
+      want ["sp => sp"]
+      got  String[]
+  matchpy [symbol wildcards]  facₐₘ(~(sp::pred), ~(~y))  ~  facₐₘ(a, sp)
+      want ["sp => sp"]
+      got  String[]
+  matchpy [symbol wildcards]  facₐₘ(~(x::pred), ~(~y))  ~  facₐₘ(a, sp)
+      want ["x => sp", "x => a"]
+      got  String[]
+  symbolicutils [literal and slot]  1  ~  1
+      want [""]
+      got  MethodError: no method matching _eachmatch(::Int64, ::Int64)
+The function `_eachmatch` exists, but n
+  symbolicutils [literal and slot]  1  ~  2
+      want String[]
+      got  MethodError: no method matching _eachmatch(::Int64, ::Int64)
+The function `_eachmatch` exists, but n
+  symbolicutils [segments]  ~(~wx) + ~wy + ~(~wx)  ~  a + b + a
+      want ["wx => [a]; wy => b"]
+      got  ["wx => []; wy => +(a,a,b)", "wx => [a]; wy => b"]
+  symbolicutils [segments]  ~(~wx) + ~wy + ~(~wx)  ~  a + b + a + a + b
+      want ["wx => [a,b]; wy => a"]
+      got  ["wx => [a,b]; wy => a", "wx => [b]; wy => +(a,a,a)", "wx => [a]; wy => +(a,b,b)", "wx => []; wy => +(a,a,a,b,b)"]
+  symbolicutils [defslots]  x + ~(!(wm::pred))  ~  x
+      want String[]
+      got  ["wm => 0"]
+
+Failures of _ceachmatch:
+  matchpy [commutative multiple sequence vars]  h(~(~x), gₘ(~(~x)))  ~  h(b, a, gₘ(a, b))
+      want ["x => [a,b]"]
+      got  String[]
+  symbolicutils [segments]  ~(~wx) + ~wy + ~(~wx)  ~  a + b + a
+      want ["wx => [a]; wy => b"]
+      got  ["wx => []; wy => +(a,a,b)", "wx => [a]; wy => b"]
+  symbolicutils [segments]  ~(~wx) + ~wy + ~(~wx)  ~  a + b + a + a + b
+      want ["wx => [a,b]; wy => a"]
+      got  ["wx => [a,b]; wy => a", "wx => []; wy => +(a,a,a,b,b)"]
+  symbolicutils [defslots]  x + ~(!(wm::pred))  ~  x
+      want String[]
+      got  ["wm => 0"]

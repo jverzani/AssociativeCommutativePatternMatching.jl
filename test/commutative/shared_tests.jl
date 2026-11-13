@@ -60,7 +60,8 @@ function shared_tests(B::Backend)
 
     @testset "number of matches ($op)" for op ∈ (:+, :*)
         # see the table in src/rule2a.jl. Matching is commutative, not
-        # associative, and multiple segments are filled greedily.
+        # associative; the arguments are shared among several segments in
+        # every way.
         sub = S(Expr(:call, op, :a, :b, :c))
         pat(u, v) = Expr(:call, op, u, v)
 
@@ -79,12 +80,14 @@ function shared_tests(B::Backend)
         @test has_match(σs, :x => c, :y => (a, b))
 
         σs = eachm(pat(:(~~x), :(~~y)), sub)
-        @test length(σs) == 1
+        @test length(σs) == 8 # each argument to x or y
         @test binds_keys(σs, :x, :y)
-        @test sum(σ -> length(σ[:x]) + length(σ[:y]), σs) == 3
+        @test all(σ -> length(σ[:x]) + length(σ[:y]) == 3, σs)
+        @test has_match(σs, :x => (a, b, c), :y => ())
+        @test has_match(σs, :x => (b,), :y => (a, c))
 
         σs = eachm(pat(:(~~~x), :(~~~y)), sub)
-        @test length(σs) == 1
+        @test length(σs) == 6
         @test all(σ -> !isempty(σ[:x]) && !isempty(σ[:y]), σs)
     end
 
@@ -97,6 +100,13 @@ function shared_tests(B::Backend)
         end
         # not enough terms for three plus segments
         @test isempty(eachm(:(~~~x + ~~~y + ~~~w), S(:(a + b))))
+        # each of 4 terms to one of 3 segments
+        @test length(eachm(:(~~x + ~~y + ~~w), sub)) == 3^4
+    end
+
+    @testset "repeated segments" begin
+        # the same segment twice takes the same arguments
+        @test binds(matchone(:(sin(~~x) + cos(~~x)), S(:(sin(a) + cos(a)))), :x => (a,))
     end
 
     @testset "lone segment" begin
@@ -126,10 +136,12 @@ function shared_tests(B::Backend)
         @test all(σ -> σ[:y] == (), eachm(:(~x + ~~y::$(istup(0))), sub))
         @test isempty(eachm(:(~x + ~~y::$(istup(4))), sub))
 
-        # segments only, filled greedily
+        # segments only: the first match gives every argument to the first
         @test binds(matchone(:(~~x + ~~y::$(istup(0))), sub),
                     :x => (a, b, c), :y => ())
-        @test matchone(:(~~x + ~~y::$(istup(1))), sub) === nothing
+        σs = eachm(:(~~x + ~~y::$(istup(1))), sub)
+        @test length(σs) == 3 && all(σ -> length(σ[:x]) == 2, σs)
+        @test isempty(eachm(:(~~x + ~~y::$(istup(4))), sub))
     end
 
     @testset "default slots" begin

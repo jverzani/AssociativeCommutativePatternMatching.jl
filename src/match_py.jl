@@ -69,7 +69,7 @@ function match_one_to_one(ss, p, fₐ = nothing, θ = (match_dict(),))
         opₚ = operation(p)
         if is_𝑋(opₚ) # check for variable function head
             σ′ = match_dict(varname(opₚ) => opₛ)
-            θ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
+            θ = union_merge(θ, σ′)
         else
             _opsym(opₛ) == opₚ || return ∅ # can't have defslot in p at this level
         end
@@ -100,37 +100,67 @@ function match_sequence(ss, ps, fₐ=nothing, θ=(match_dict(),))
     nfree = n - m + nstar
     nseq = nstar + nplus
 
-    λ = ks -> begin
-        i, j = 1, 1 # 0,0 in 0-based
-        θ′ = θ
-        for (l, pl) ∈ enumerate(ps)
-            lsub = 1
-            if (is_plus(pl) || is_segment(pl)) ||
-                (is_slot(pl) && !isnothing(fₐ))
-
-                kj = isempty(ks) ? 1 : ks[j]
-                lsub = lsub + kj
-
-                if is_segment(pl)
-                    lsub = lsub - 1
-                end
-
-                j = j + 1
-            end
-            ss′ = ss[i:(i+(lsub-1))] # lsub terms
-            θ′ = match_one_to_one(ss′, pl, fₐ, θ′)
-            θ′ == ∅  && break
-            i = i + lsub
-        end
-        θ′ == ∅ && return nothing
-        i == n + 1 || return nothing # all of ss must be consumed
-        return θ′
+    # For every distribution of free arguments in ss among the seq. vars,
+    # the matches (θᵣ = θᵣ ∪ θ′)
+    if nseq == 0 # one way, when ss and ps have the same length
+        nfree == 0 || return ∅
+        θ′ = _match_sequence1(ss, ps, fₐ, θ, n, ())
+        return θ′ === nothing ? ∅ : θ′
     end
+    _SeqMatches(multiexponents(nseq, nfree), ss, ps, fₐ, θ, n)
+end
 
-    i = multiexponents(nseq, nfree) # For every distribution of free arguments
-                                    # in ss among the seq. vars...
-    ii = Iterators.map(λ, i)
-    _chain(ii)                      # θᵣ = θᵣ ∪ θ′
+struct _SeqMatches{E,S,P,T,F}
+    exps::E   # the distributions of the free arguments
+    ss::S
+    ps::P
+    fₐ::F
+    θ::T
+    n::Int
+end
+Base.IteratorSize(::Type{<:_SeqMatches}) = Base.SizeUnknown()
+Base.IteratorEltype(::Type{<:_SeqMatches}) = Base.EltypeUnknown() # as the lazy chain it replaced
+
+# state: (state of exps, matches for the current distribution, their state)
+function Base.iterate(it::_SeqMatches, st = (_Start(), (), _Start()))
+    estate, inner, istate = st
+    while true
+        r = istate isa _Start ? iterate(inner) : iterate(inner, istate)
+        r === nothing || return (r[1], (estate, inner, r[2]))
+        re = estate isa _Start ? iterate(it.exps) : iterate(it.exps, estate)
+        re === nothing && return nothing
+        ks, estate = re
+        θ′ = _match_sequence1(it.ss, it.ps, it.fₐ, it.θ, it.n, ks)
+        inner, istate = θ′ === nothing ? () : θ′, _Start()
+    end
+end
+
+# the matches for one distribution ks of the free arguments, or nothing
+function _match_sequence1(ss, ps, fₐ, θ, n, ks)
+    i, j = 1, 1 # 0,0 in 0-based
+    θ′ = θ
+    for (l, pl) ∈ enumerate(ps)
+        lsub = 1
+        if (is_plus(pl) || is_segment(pl)) ||
+            (is_slot(pl) && !isnothing(fₐ))
+
+            kj = isempty(ks) ? 1 : ks[j]
+            lsub = lsub + kj
+
+            if is_segment(pl)
+                lsub = lsub - 1
+            end
+
+            j = j + 1
+        end
+        ss′ = ss[i:(i+(lsub-1))] # lsub terms
+        θ′ = match_one_to_one(ss′, pl, fₐ, θ′)
+        (θ′ == ∅ || (θ′ isa Vector && isempty(θ′))) && break
+        i = i + lsub
+    end
+    (θ′ == ∅ || (θ′ isa Vector && isempty(θ′))) && return nothing
+    i == n + 1 || return nothing # all of ss must be consumed
+    return θ′
 end
 
 ## ---- commutative (associative when fₐ != nothing)
@@ -142,29 +172,20 @@ function match_commutative_sequence(ss, ps, fₐ = nothing, θ = (match_dict(),)
 
     ss, ps = out
 
-    ## chain together
-    i = let ss=ss, ps=ps
-        Iterators.map(σ -> (ss, ps, σ), θ)
-    end
-
-    ii = Iterators.map(i) do a
-        ss, ps, σ = a
-        itr = _match_non_variable_patterns(ss, ps, fₐ, σ)
-        itr
-    end |> _chain
-
-    iii = Iterators.map(ii) do a
-        ss, ps, σ = a
-        itr = _match_regular_variables(ss, ps, fₐ, σ)
-        itr
-    end |> _chain
-
-    iv = Iterators.map(iii) do a
-        ss, ps, σ = a
-        itr = _match_sequence_variables(ss, ps, fₐ, σ)
-    end |> _chain
-
+    # for each σ ∈ θ, the matches of the non-variable patterns; for each
+    # of those, the matches of the regular variables; for each of those,
+    # the matches of the sequence variables (depth first, lazily)
+    _CommSeqMatches(θ, _anyvec(ss), ps, fₐ)
 end
+
+struct _Start end # an iterator not yet started
+
+# a partial match: the subject terms and patterns left, and the match so far
+const _Partial = Tuple{Vector{Any}, Any, MatchDict}
+
+_anyvec(ss::Vector{Any}) = ss
+_anyvec(ss) = Any[s for s ∈ ss]
+
 
 # return trimmed ss, ps or nothing
 function _match_constant_patterns(ss, ps)
@@ -232,82 +253,104 @@ function _match_non_variable_patterns(ss, ps, fₐ=nothing, σ=match_dict())
     ps′, ps′′ = _groupby(!is_𝑋, ps)
 
     n = length(ps′)
-    n == 0 && return ((ss, ps, σ), )
+    n == 0 && return _Partial[(_anyvec(ss), ps, σ)]
     n ≤ length(ss) || return nothing
 
-    # we want to match over same size so we first pick combinations of
-    # size n, ss′, and then use a stack-based approach to loop over
-    # permutations of ss′ allowing for early termination if no
-    # matches are possible.
-    # (basic algorithm, with errors fixed, from claude on depth-first stack approach to compute
-    # permutations)
-    λ = (inds, ps′, σ, ss) -> begin
-        ss′ = [ss[i] for i ∈ inds] # not ss[inds], which some argument types lack
-        result = Any[]
-        stack = Any[(((), tuple(ss′...), (σ,)))]
-        while !isempty(stack)
-            current, remaining, θ = pop!(stack)
-            j = length(current)
-            if j > 0
-
-                p, s = ps′[j], current[end]
-                p, θ = check_nonmatching_defslot(s, p, θ)
-                p = normalize_pattern(p,s) # rewrite pattern if needed
-
-                # normalize might make p a non call, if so ...
-                if is_𝑋(p)
-                    pass_any_guard(p, s) || continue
-                    σ′ = match_dict(varname(p) => s)
-                    θ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
-                else
-                    opₚ = operation(p) # s may not be a call (defslots)
-                    opₛ = nothing
-                    if iscall(s)
-                        if is_𝑋(opₚ) # check for variable function head
-                            opₛ = operation(s)
-                            σ′ = match_dict(varname(opₚ) => opₛ)
-                            θ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
-                        elseif !any(is_defslot, arguments(p))
-                            opₛ = first(normalize_subject(s, p))
-                            _opsym(opₛ) == opₚ || continue # stop this track
-                        end
-                    end
-                    θ = match_one_to_one([s], p, fₐ, θ)
-                    isempty(θ) && continue # stop this track
-                end
-            end
-
-            if isempty(remaining) # terminate successfully if nothing left in remaining
-                ss′′ = [ss[i] for i ∈ setdiff(eachindex(ss), inds)] # by position, keeps repeats
-                for σ ∈ θ
-                    push!(result, (ss′′, ps′′, σ))
-                end
-                continue
-            end
-
-            for i in reverse(eachindex(remaining)) # LIFO stack, reversing keeps order
-                v = remaining[i]
-                # equal values give the same permutations; use first only
-                any(isequal(v), remaining[1:(i-1)]) && continue
-                remaining′ = (remaining[1:(i-1)]..., remaining[(i+1):end]...)
-                val = ((current..., v),
-                       remaining′,
-                       θ)
-                push!(stack, val)
-            end
-
-        end
-        return result
-    end
-
-    # combinations of positions, lazily. Combinations with the same values give
+    # combinations of positions. Combinations with the same values give
     # the same matches, so only distinct ones are used: equal values share
     # an id, distinct combinations of ids are mapped back to positions.
-    ids = [findfirst(isequal(s), ss) for s ∈ ss]
-    i = Iterators.map(c -> _ids_to_positions(c, ids), multiset_combinations(ids, n))
-    ii = Iterators.map(inds -> λ(inds, ps′, σ, ss), i)
-    iii = Iterators.flatten(ii)
-    return iii
+    ids = Int[findfirst(isequal(s), ss) for s ∈ ss]
+    combos = Vector{Int}[_ids_to_positions(c, ids) for c ∈ multiset_combinations(ids, n)]
+    return _NonVarMatches(combos, _anyvec(ss), ps′, ps′′, σ, fₐ)
+end
+
+# The matches of the non-variable patterns, lazily: for each combination of
+# subject terms, all the ways to match them to the patterns.
+struct _NonVarMatches
+    combos::Vector{Vector{Int}}
+    ss::Vector{Any}
+    ps′::Any    # the non-variable patterns
+    ps′′::Any   # the others
+    σ::MatchDict
+    fₐ::Any
+end
+Base.IteratorSize(::Type{_NonVarMatches}) = Base.SizeUnknown()
+Base.eltype(::Type{_NonVarMatches}) = _Partial
+
+# state: (next combination, matches of the current one, next of those)
+function Base.iterate(it::_NonVarMatches, st = (1, _Partial[], 1))
+    k, buf, i = st
+    while i > length(buf)
+        k > length(it.combos) && return nothing
+        buf, i = _nonvar_perms(it.combos[k], it.ps′, it.ps′′, it.σ, it.ss, it.fₐ), 1
+        k += 1
+    end
+    return (buf[i], (k, buf, i + 1))
+end
+
+# we want to match over same size so we first pick combinations of
+# size n, ss′, and then use a stack-based approach to loop over
+# permutations of ss′ allowing for early termination if no
+# matches are possible.
+# (basic algorithm, with errors fixed, from claude on depth-first stack approach to compute
+# permutations)
+function _nonvar_perms(inds, ps′, ps′′, σ, ss, fₐ)
+    ss′ = Any[ss[i] for i ∈ inds] # not ss[inds], which some argument types lack
+    result = Tuple{Vector{Any}, Any, MatchDict}[]
+    # (matched, remaining, matches so far); the matches are collected at
+    # each step, as every branch below uses them and all are kept
+    stack = Tuple{Vector{Any}, Vector{Any}, Vector{MatchDict}}[(Any[], ss′, MatchDict[σ])]
+    while !isempty(stack)
+        current, remaining, θ = pop!(stack)
+        j = length(current)
+        if j > 0
+
+            p, s = ps′[j], current[end]
+            p, θ′ = check_nonmatching_defslot(s, p, θ)
+            θ = θ′ === θ ? θ : _collect_matches(θ′)
+            p = normalize_pattern(p,s) # rewrite pattern if needed
+
+            # normalize might make p a non call, if so ...
+            if is_𝑋(p)
+                pass_any_guard(p, s) || continue
+                σ′ = match_dict(varname(p) => s)
+                θ = union_merge(θ, σ′)
+            else
+                opₚ = operation(p) # s may not be a call (defslots)
+                opₛ = nothing
+                if iscall(s)
+                    if is_𝑋(opₚ) # check for variable function head
+                        opₛ = operation(s)
+                        σ′ = match_dict(varname(opₚ) => opₛ)
+                        θ = union_merge(θ, σ′)
+                    elseif !any(is_defslot, arguments(p))
+                        opₛ = first(normalize_subject(s, p))
+                        _opsym(opₛ) === opₚ || continue # stop this track
+                    end
+                end
+                θ = _collect_matches(match_one_to_one([s], p, fₐ, θ))
+                isempty(θ) && continue # stop this track
+            end
+        end
+
+        if isempty(remaining) # terminate successfully if nothing left in remaining
+            ss′′ = Any[ss[i] for i ∈ setdiff(eachindex(ss), inds)] # by position, keeps repeats
+            for σ ∈ θ
+                push!(result, (ss′′, ps′′, σ))
+            end
+            continue
+        end
+
+        for i in reverse(eachindex(remaining)) # LIFO stack, reversing keeps order
+            v = remaining[i]
+            # equal values give the same permutations; use first only
+            _any_equal(v, remaining, i - 1) && continue
+            remaining′ = Any[remaining[k] for k ∈ eachindex(remaining) if k != i]
+            push!(stack, (push!(copy(current), v), remaining′, θ))
+        end
+
+    end
+    return result
 end
 
 
@@ -325,7 +368,7 @@ function check_nonmatching_defslot(s, p, θ′)
                 if !isempty(inds)
                     val = defslot_op_map[opₚ]
                     σ′ = match_dict((varname.(argsₚ[inds]) .=> val)...) # no check for uniqueness of slot name
-                    θ′ = (merge_match(σ, σ′) for σ ∈ θ′ if iscompatible(σ, σ′))
+                    θ′ = union_merge(θ′, σ′)
 
                     ps = argsₚ[setdiff(eachindex(argsₚ), inds)]
                     p′ = pterm(opₚ, ps)
@@ -336,7 +379,7 @@ function check_nonmatching_defslot(s, p, θ′)
                 if is_defslot(b)
                     val = defslot_op_map[opₚ]
                     σ′ = match_dict(varname(b) => val)
-                    θ′ = (merge_match(σ, σ′) for σ ∈ θ′ if iscompatible(σ, σ′))
+                    θ′ = union_merge(θ′, σ′)
                     p′ = a
                     return p′, θ′
                 end
@@ -348,47 +391,89 @@ end
 
 
 # match ~x type variables
-# return iterator of (ss, ps, σ)
+# return an iterable of (ss, ps, σ)
 function _match_regular_variables(ss, ps, fₐ=nothing, σ = match_dict())
     #@show :mrv, ss, ps, fₐ, σ
-    isempty(ps) && return isempty(ss) ? ((ss, ps, σ),) : ∅
+    isempty(ps) && return isempty(ss) ? _regvars((_anyvec(ss), ps, σ)) : _NOREGVARS
 
     out =  _match_matched_variables(ss, ps, σ, fₐ)
-    isnothing(out) && return ∅
+    isnothing(out) && return _NOREGVARS
 
     ss, ps = out
     # star variables may be empty, others need at least one term
-    isempty(ss) && any(_needs_term, ps) && return ∅
+    isempty(ss) && any(_needs_term, ps) && return _NOREGVARS
 
     # fₐ is  commutative, maybe associative
-    isassociative(fₐ) && return ((ss, ps, σ),) # associative turns ~x into ~~x
+    isassociative(fₐ) && return _regvars((_anyvec(ss), ps, σ)) # associative turns ~x into ~~x
 
 
     ps_reg, ps′′ = _groupby(is_slot, ps)
-    isempty(ps_reg) && return ((ss, ps, σ),)
+    isempty(ps_reg) && return _regvars((_anyvec(ss), ps, σ))
 
     if length(ps_reg) < length(ss)
         if ps_reg == ps
             # can't match, not enough
-            return ∅
+            return _NOREGVARS
         end
     end
 
-    dp = _countmap(ps_reg)
-    ds = _countmap(ss)
-    i = _split_take(ds, dp)
+    return _RegVarMatches(nothing, _countmap(ss), _countmap(ps_reg), σ, ps′′)
+end
 
-    ii = Iterators.filter(ab -> begin
-                          iscompatible(first(ab), σ)
-                          end, i)
+# The matches of the regular variables, lazily (a guard may be costly, or
+# throw): for each way to give each variable a distinct subject term (the
+# first variable's choice changing fastest), the match and what is left.
+struct _RegVarMatches
+    fixed::Union{Nothing, Vector{_Partial}} # when not nothing, the matches
+    ds::Vector     # subject term => count
+    dp::Vector     # variable => count
+    σ::MatchDict
+    ps′′::Any      # the other patterns
+end
+Base.IteratorSize(::Type{_RegVarMatches}) = Base.SizeUnknown()
+Base.eltype(::Type{_RegVarMatches}) = _Partial
 
-    iii = Iterators.map(ii) do (σ′, ds)
-        σ′ = merge_match(σ, σ′)
-        ss′′ = _uncountmap(ds)
-        (ss′′, ps′′, σ′)
+_regvars(a::_Partial) = _RegVarMatches(_Partial[a], [], [], match_dict(), nothing)
+const _NOREGVARS = _RegVarMatches(_Partial[], [], [], match_dict(), nothing)
+
+# the state, the choices (or for fixed matches, the index), is updated in place
+function Base.iterate(it::_RegVarMatches, st::Union{Nothing,Vector{Int}} = nothing)
+    fixed = it.fixed
+    if fixed !== nothing
+        i = st === nothing ? 1 : only(st) + 1
+        i > length(fixed) && return nothing
+        st === nothing ? (st = [i]) : (st[1] = i)
+        return (fixed[i], st)
     end
+    n = length(it.ds)
+    if st === nothing
+        n == 0 && return nothing
+        inds = ones(Int, length(it.dp))
+    else
+        inds = st
+        _next_choice!(inds, n) || return nothing
+    end
+    while true
+        r = _split_take1(it.ds, it.dp, inds)
+        if r !== nothing
+            σ′, ds′ = r
+            iscompatible(σ′, it.σ) &&
+                return ((_uncountmap(ds′), it.ps′′, merge_match(it.σ, σ′)), inds)
+        end
+        _next_choice!(inds, n) || return nothing
+    end
+end
 
-    return iii
+# the next choice, the first fastest; false after the last
+function _next_choice!(inds, n)
+    j = 1
+    while j ≤ length(inds) && inds[j] == n
+        inds[j] = 1
+        j += 1
+    end
+    j > length(inds) && return false
+    inds[j] += 1
+    return true
 end
 
 
@@ -416,95 +501,211 @@ function _match_sequence_variables(ss, ps, fₐ=nothing, σ = match_dict())
     ds = _countmap(ss)
     dplus, dstar = _countmap(vs), _countmap(vs′)
 
-    vars = vcat(first.(dplus), first.(dstar))
+    vars = Any[first.(dplus)..., first.(dstar)...]
     isempty(vars) && return nothing
 
-    svars = first.(ds)
+    svars = Any[first(d) for d ∈ ds]
+    ks = Int[last.(dplus)..., last.(dstar)...]
+    # for each distinct subject term, the ways to give its copies to the
+    # variables, a_j copies to the jth with sum(a_j * ks[j]) == count
+    choices = Vector{Vector{Int}}[_distribute_total(last(d), ks) for d ∈ ds]
+    # a variable's terms are sorted (<ₑ); the order of the distinct terms is
+    # found once (stable, as `sort` is) rather than for each assignment
+    order = length(svars) ≤ 1 ? collect(eachindex(svars)) : sortperm(Symbol.(svars))
 
-    pluses = last.(dplus)
-    stars = last.(dstar)
-    ks = vcat(pluses, stars)
+    return _SeqVarMatches(σ, vars, Symbol[varname(v) for v ∈ vars], svars, order,
+                          choices, length(dplus), fₐ)
+end
 
-    n1, n2 = length(pluses), length(stars)
-    n = n1 + n2
+# Enumerate valid assignments of subject counts to sequence variables without
+# constructing the huge cartesian product of all 0:s choices per variable.
+# For a given subject count `total`, and per-variable weight `ks[j]`, choose
+# counts `a_j` with sum(a_j * ks[j]) == total.
+function _distribute_total(total::Int, ks::Vector{Int})
+    n = length(ks)
+    row = zeros(Int, n)
+    out = Vector{Vector{Int}}()
+    _distribute_total!(out, row, ks, n, total)
+    out
+end
+function _distribute_total!(out, row, ks, j, remaining)
+    if j < 1
+        remaining == 0 && push!(out, copy(row))
+        return
+    end
+    k = ks[j]
+    for a in 0:fld(remaining, k)
+        row[j] = a
+        _distribute_total!(out, row, ks, j - 1, remaining - a * k)
+    end
+end
 
-    h = isnothing(fₐ) ? identity :
-        (as) -> pterm(fₐ, as)
+# The matches of the sequence variables, lazily: one for each choice, per
+# distinct subject term, of how its copies are given to the variables (the
+# product of `choices`, in reverse order), when every plus variable gets a
+# term and the values pass the guards and agree with `σ`.
+struct _SeqVarMatches
+    σ::MatchDict
+    vars::Vector{Any}       # plus (and, if associative, slot) variables, then the others
+    names::Vector{Symbol}
+    svars::Vector{Any}      # the distinct subject terms
+    order::Vector{Int}      # svars in <ₑ order
+    choices::Vector{Vector{Vector{Int}}}
+    nplus::Int
+    fₐ::Any
+end
+Base.IteratorSize(::Type{_SeqVarMatches}) = Base.SizeUnknown()
+Base.eltype(::Type{_SeqVarMatches}) = MatchDict
 
-    # rename
-    ssᵥ = [v for (k,v) in ds] # last.(ds)
+function Base.iterate(it::_SeqVarMatches, idx::Union{Nothing,Vector{Int}} = nothing)
+    if idx === nothing
+        # start at the last element of the product
+        any(isempty, it.choices) && return nothing
+        idx = Int[length(c) for c ∈ it.choices]
+        σ′ = _seqvar_match(it, idx)
+        σ′ === nothing || return (σ′, idx)
+    end
+    while _prev!(idx, it.choices)
+        σ′ = _seqvar_match(it, idx)
+        σ′ === nothing || return (σ′, idx)
+    end
+    return nothing
+end
 
-    # Enumerate valid assignments of subject counts to sequence variables without
-    # constructing the huge cartesian product of all 0:s choices per variable.
-    # For a given subject count `total`, and per-variable weight `ks[j]`, choose
-    # counts `a_j` with sum(a_j * ks[j]) == total.
-    function _distribute_total(total, ks)
-        n = length(ks)
-        row = zeros(Int, n)
-        out = Vector{Vector{Int}}()
-        function rec(j, remaining)
-            if j < 1
-                remaining == 0 && push!(out, copy(row))
-                return
-            end
-            k = ks[j]
-            maxv = fld(remaining, k)
-            for a in 0:maxv
-                row[j] = a
-                rec(j - 1, remaining - a * k)
+# step back through the product, the first index fastest
+function _prev!(idx, choices)
+    for i ∈ eachindex(idx)
+        if idx[i] > 1
+            idx[i] -= 1
+            return true
+        end
+        idx[i] = length(choices[i])
+    end
+    return false
+end
+
+function _seqvar_match(it::_SeqVarMatches, idx)
+    choices = it.choices
+    for j ∈ 1:it.nplus # a plus variable needs a term
+        any(i -> choices[i][idx[i]][j] > 0, eachindex(idx)) || return nothing
+    end
+    fₐ = it.fₐ
+    σ′ = it.σ
+    for (j, v) ∈ enumerate(it.vars)
+        vv = Any[]
+        for i ∈ it.order
+            for _ ∈ 1:choices[i][idx[i]][j]
+                push!(vv, it.svars[i])
             end
         end
-        rec(n, total)
-        out
-    end
-
-    ii = Iterators.filter(Iterators.product((_distribute_total(s, ks) for s in ssᵥ)...)) do u
-        all(sum(ui .* ks) == si for (ui, si) in zip(u, ssᵥ)) &&
-            all(sum(ui[i] for ui in u) > 0 for i in 1:n1)
-    end
-
-    iii = Iterators.map(Iterators.reverse(ii)) do u
-        σ′ = σ
-        for (j, v) ∈ enumerate(vars)
-            vv = []
-            for (i,s) in enumerate(svars)
-                for _ in 1:u[i][j]
-                    push!(vv, s) # allocates less than appending repeat([s],uᵢⱼ)
-                end
-            end
-            # give defaults; nothing or value
-            if isempty(vv)
-                if is_defslot(v)
-                    vv′ = defslot_op_map[fₐ]
-                elseif is_segment(v)
-                    vv′ = Any[] #()
-                else
-                    vv′ = nothing
-                end
+        # give defaults; nothing or value
+        if isempty(vv)
+            if is_defslot(v)
+                vv′ = defslot_op_map[fₐ]
+            elseif is_segment(v)
+                vv′ = Any[] #()
             else
-                # if var is ~x fₐ not nothing call fₐ on vv
-                vv = sort(vv, lt = <ₑ)
-                vv′ = (is_slot(v) && !isa(fₐ, Nothing)) ? sterm(fₐ, vv) : vv
+                vv′ = nothing
             end
-            if !isnothing(vv′)
-
-                pass_any_guard(v, vv′) || return nothing
-
-                var = varname(v)
-                σ′′ = match_dict(var => vv′)
-                iscompatible(σ′, σ′′) || return nothing
-                σ′ = merge_match(σ′, σ′′)
+        else
+            # if var is ~x fₐ not nothing call fₐ on vv
+            vv′ = (is_slot(v) && !isa(fₐ, Nothing)) ? sterm(fₐ, vv) : vv
+        end
+        if !isnothing(vv′)
+            pass_any_guard(v, vv′) || return nothing
+            k = it.names[j]
+            vv′ = isa(vv′, Number) ? unwrap_const(vv′) : vv′
+            old = get(σ′, k, _NOKEY)
+            if old === _NOKEY
+                σ′ = MatchDict(σ′, k, vv′)
+            elseif !isequal(old, vv′)
+                return nothing
             end
         end
-        iscompatible(σ, σ′) || return nothing
-        return merge_match(σ, σ′)
     end
+    iscompatible(it.σ, σ′) || return nothing
+    return merge_match(it.σ, σ′)
+end
 
-    iv = Iterators.filter(!isnothing, iii)
-    iv
+# The matches of a commutative sequence; see match_commutative_sequence
+struct _CommSeqMatches{T}
+    θ::T
+    ss::Vector{Any}
+    ps::Any
+    fₐ::Any
+end
+Base.IteratorSize(::Type{<:_CommSeqMatches}) = Base.SizeUnknown()
+Base.eltype(::Type{<:_CommSeqMatches}) = MatchDict
+
+
+# where the depth-first search is; mutated by `iterate`
+mutable struct _CommSeqCursor
+    θstate::Any                       # state of θ, or _Start()
+    s1::Any                           # the non-variable pattern matches
+    s1state::Any                      # its state, or _Start()
+    s2::_RegVarMatches                # the regular variable matches
+    s2state::Union{Nothing, Vector{Int}} # their state, or nothing
+    s3::Union{Nothing,_SeqVarMatches} # the sequence variable matches
+    s3state::Union{Nothing,Vector{Int}}
+end
+
+function Base.iterate(it::_CommSeqMatches,
+                      c::_CommSeqCursor = _CommSeqCursor(_Start(), nothing, _Start(),
+                                                         _NOREGVARS, nothing, nothing, nothing))
+    while true
+        s3, s3state = c.s3, c.s3state
+        if s3 !== nothing
+            r = s3state === nothing ? iterate(s3) : iterate(s3, s3state)
+            if r !== nothing
+                c.s3state = r[2]
+                return (r[1], c)
+            end
+            c.s3 = nothing
+        end
+        s2, s2state = c.s2, c.s2state
+        r2 = s2state === nothing ? iterate(s2) : iterate(s2, s2state)
+        if r2 === nothing
+            c.s2, c.s2state = _NOREGVARS, nothing # done; don't iterate it again
+        else
+            (ss, ps, σ), c.s2state = r2
+            r3 = _match_sequence_variables(ss, ps, it.fₐ, σ)
+            if r3 isa _SeqVarMatches
+                c.s3, c.s3state = r3, nothing
+            elseif r3 isa Tuple{MatchDict}
+                return (r3[1], c)
+            end
+            continue
+        end
+        if c.s1 !== nothing
+            r = c.s1state isa _Start ? iterate(c.s1) : iterate(c.s1, c.s1state)
+            if r !== nothing
+                a, c.s1state = r
+                ss, ps, σ = a
+                c.s2, c.s2state = _match_regular_variables(ss, ps, it.fₐ, σ), nothing
+                continue
+            end
+            c.s1 = nothing
+        end
+        r = c.θstate isa _Start ? iterate(it.θ) : iterate(it.θ, c.θstate)
+        r === nothing && return nothing
+        σ, c.θstate = r
+        c.s1, c.s1state = _match_non_variable_patterns(it.ss, it.ps, it.fₐ, σ), _Start()
+    end
 end
 
 ## --- utilities
+# the matches of an iterable of matches, as a vector
+_collect_matches(θ::Vector{MatchDict}) = θ
+_collect_matches(θ) = MatchDict[σ for σ ∈ θ]
+
+# is v equal to one of xs[1:n]?
+function _any_equal(v, xs, n)
+    for k ∈ 1:n
+        isequal(v, xs[k]) && return true
+    end
+    return false
+end
+
 # does pattern need at least one subject term? (star and default variables do not)
 _needs_term(p) = !(is_segment(p) || is_defslot(p))
 
@@ -530,36 +731,31 @@ end
 
 # counting functions
 function _countmap(x)
-    d = Dict()
-    [(d[xi] = get(d, xi, 0) + 1) for xi in x]
+    d = Dict{Any,Int}() # the order of a Dict{Any,Any}: same keys, same slots
+    for xi in x
+        d[xi] = get(d, xi, 0) + 1
+    end
     return [k => v for (k,v) ∈ d]
 end
 function _uncountmap(dx)
-    return vcat((repeat([k],v) for (k,v) in dx)...)
+    return Any[k for (k,v) ∈ dx for _ ∈ 1:v]
 end
 
-# different ways to grab the pie
-function _split_take(ds, dp)
-    n = length(ds)
-    k = length(dp)
-
-    i = Iterators.product((1:n for _ in 1:k)...)
-    ii = Iterators.map(i) do inds
-        ds′ = copy(ds)
-        σ = match_dict()
-        for (i, (p, np)) ∈ zip(inds, (dp))
-            s, ns = ds′[i]
-            np > ns && return nothing # won't fit
-            pass_any_guard(p, s) || return nothing
-            σ′ = match_dict(varname(p) => s)
-            # same variable may appear with and without a guard
-            iscompatible(σ, σ′) || return nothing
-            ds′[i] = s => (ns - np)
-            σ = merge_match(σ, σ′)
-        end
-        (σ, ds′)
+# a way to grab the pie: give the ith variable of dp the inds[i]th term of ds
+function _split_take1(ds, dp, inds)
+    ds′ = copy(ds)
+    σ = match_dict()
+    for (i, (p, np)) ∈ zip(inds, (dp))
+        s, ns = ds′[i]
+        np > ns && return nothing # won't fit
+        pass_any_guard(p, s) || return nothing
+        σ′ = match_dict(varname(p) => s)
+        # same variable may appear with and without a guard
+        iscompatible(σ, σ′) || return nothing
+        ds′[i] = s => (ns - np)
+        σ = merge_match(σ, σ′)
     end
-    iii = Iterators.filter(!isnothing, ii)
+    (σ, ds′)
 end
 
 
@@ -585,33 +781,34 @@ _isnumber(x::Expr) = !(_ismatch(x, !_isnumber))
 
 function normalize_pattern(pat, sub)
     iscall(sub) || return pat
-    opₛ = _opsym(operation(sub))
     iscall(pat) || return pat # are there no op examples?
     opₚ = operation(pat)
+    opₚ isa Symbol || return pat # e.g. (~F)(...); no rewrite applies
+    opₛ = _opsym(operation(sub))::Symbol
 
-    if (opₛ, opₚ) == (:sqrt, :^)
+    if opₛ === :sqrt && opₚ === :^
         u, v = arguments(pat)
         if isequal(_constant_value(v), 1//2)
             return Expr(:call, :sqrt, u)
         end
-    elseif (opₛ, opₚ) == (:cbrt, :^)
+    elseif opₛ === :cbrt && opₚ === :^
         u, v = arguments(pat)
         if isequal(_constant_value(v), 1//3)
             return Expr(:call, :cbrt, u)
         end
-    elseif (opₛ, opₚ) == (:^, :sqrt)
+    elseif opₛ === :^ && opₚ === :sqrt
         a, b = arguments(sub)
         if isequal(_constant_value(b), 1//2)
             v = only(arguments(pat))
             return Expr(:call, :^, v, b) # b, not 1//2, compares equal to itself
         end
-    elseif (opₛ, opₚ) == (:^, :cbrt)
+    elseif opₛ === :^ && opₚ === :cbrt
         a, b = arguments(sub)
         if isequal(_constant_value(b), 1//3)
             v = only(arguments(pat))
             return Expr(:call, :^, v, b) # b, not 1//2, compares equal to itself
         end
-    elseif (opₛ, opₚ) == (:^, :/)
+    elseif opₛ === :^ && opₚ === :/
         a, b = arguments(sub)
         u, v = arguments(pat)
         if unwrap_const(u) == 1
@@ -627,23 +824,23 @@ function normalize_pattern(pat, sub)
                 return Expr(:call, :^, v, -1)
             end
         end
-    elseif (opₛ, opₚ) == (:^, :exp)
+    elseif opₛ === :^ && opₚ === :exp
         a, b = arguments(sub)
         if Symbol(unwrap_const(a)) == :ℯ
             v = only(arguments(pat))
             return Expr(:call, :^, ℯ, v)
         end
-    elseif (opₛ, opₚ) == (:exp, :^)
+    elseif opₛ === :exp && opₚ === :^
         u,v = arguments(pat)
         if eq_expr(u, :ℯ)
             return Expr(:call, :exp, v)
         end
-    elseif (opₛ, opₚ) == (:/, :^)
+    elseif opₛ === :/ && opₚ === :^
         u,v = arguments(pat)
         if isequal(_constant_value(v), -1)
             return Expr(:call, :/, 1, u)
         end
-    elseif (opₛ, opₚ) == (:*, :/)
+    elseif opₛ === :* && opₚ === :/
         u, v = arguments(pat)
         return Expr(:call, :*, u, _invert_expr(v))
     end
@@ -749,7 +946,7 @@ function clear_defslots(ss, p, fₐ, θ)
         ps′, σ′ = set_defslots(ps, opₚ, inds, inds′)
         isempty(ps′) && continue # all defaults; no pattern left to match
         p′ = pterm(opₚ, ps′)
-        θ′ = (merge_match(σ, σ′) for σ ∈ θ if iscompatible(σ, σ′))
+        θ′ = union_merge(θ, σ′)
         # might need to adjust fₐ; p′ may no longer be a call
         fₐ′ = fₐ
         if opₚ == :^ && !is_operation(:^)(p′)
@@ -761,15 +958,35 @@ function clear_defslots(ss, p, fₐ, θ)
         if !isempty(vars)
             itr = (σ for σ ∈ itr if !any(v -> haskey(σ, v) && _is_power(σ[v]), vars))
         end
-        isempty(itr) && continue
-        isempty(inds′) && return itr # no defaults needed
+        r = iterate(itr) # find the first match once, rather than by `isempty` and again later
+        r === nothing && continue
+        itr′ = _Peeled(r[1], itr, r[2], false)
+        isempty(inds′) && return itr′ # no defaults needed
         nmatched = length(inds′)
-        θ′′ = union(θ′′, itr)
+        θ′′ = union(θ′′, itr′)
     end
 
     return θ′′
 
 end
+
+# an iterator with its first element and the state after it already found.
+# Iterated again from the start, the iterator is iterated afresh, as a state
+# may be updated in place by `iterate`.
+mutable struct _Peeled{I,S}
+    first::Any
+    rest::I
+    st::S
+    used::Bool
+end
+Base.IteratorSize(::Type{<:_Peeled}) = Base.SizeUnknown()
+Base.eltype(::Type{_Peeled{I,S}}) where {I,S} = eltype(I)
+function Base.iterate(p::_Peeled)
+    p.used && return iterate(p.rest)
+    p.used = true
+    return (p.first, p.st)
+end
+Base.iterate(p::_Peeled, st) = iterate(p.rest, st)
 
 # names of variable bases of powers whose exponent is set to its default
 function _defaulted_power_bases(ps, opₚ, inds, inds′)
